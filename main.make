@@ -4,7 +4,7 @@
 
 # inventory
 DERAMMO_PLATFORM := $(shell uname -s) 
-DERAMMO_CMAKE_LISTS := $(shell find -name "CMakeLists.txt") cmake/main.make
+DERAMMO_CMAKE_LISTS := $(shell find . -name "CMakeLists.txt") cmake/main.make
 DERAMMO_CMAKE_SOURCES := $(wildcard cmake/derammo*.cmake)
 
 all: release $(DERAMMO_ALL_TARGETS)
@@ -55,7 +55,11 @@ mtest: debug
 # XXX: if we don't use gtest, how will this tie into release builds?
 
 # generate required folders
-$(strip $(DERAMMO_PLATFORM))/%:
+$(strip $(DERAMMO_PLATFORM))/Release:
+	mkdir -p $@
+$(strip $(DERAMMO_PLATFORM))/Debug:
+	mkdir -p $@
+$(strip $(DERAMMO_PLATFORM))/RelWithDebInfo:
 	mkdir -p $@
 
 # recompile cmake if necessary
