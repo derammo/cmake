@@ -52,9 +52,9 @@ function(derammo_add_gtest_target DERAMMO_TARGET)
     target_sources(${DERAMMO_GTEST_TARGET} PRIVATE ${DERAMMO_GTEST_SOURCES})
     target_link_libraries(${DERAMMO_GTEST_TARGET} ${DERAMMO_TARGET} gtest_main)
     file(MAKE_DIRECTORY ${DERAMMO_RUNTIME_DIR})
-    add_test(NAME ${DERAMMO_GTEST_TARGET}
-             COMMAND ${DERAMMO_GTEST_TARGET}
-             WORKING_DIRECTORY ${DERAMMO_RUNTIME_DIR})
+    include(GoogleTest)
+    gtest_discover_tests(${DERAMMO_GTEST_TARGET}
+                         WORKING_DIRECTORY ${DERAMMO_RUNTIME_DIR})
 endfunction()
 
 # automatically set up a library using all sources found
