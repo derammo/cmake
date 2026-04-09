@@ -46,13 +46,12 @@ function(derammo_add_gtest_target DERAMMO_TARGET)
     set(DERAMMO_GTEST_TARGET ${DERAMMO_TARGET}_gtest)
     set(DERAMMO_GTEST_TARGET ${DERAMMO_GTEST_TARGET} PARENT_SCOPE)
     
-    # create testing target
+    # create testing target, linking against the library to get includes and symbols
     add_executable(${DERAMMO_GTEST_TARGET})
-    target_sources(${DERAMMO_GTEST_TARGET} PUBLIC ${DERAMMO_PUBLIC_SOURCES})
     target_sources(${DERAMMO_GTEST_TARGET} PUBLIC ${DERAMMO_INTERFACE_SOURCES})
-    target_sources(${DERAMMO_GTEST_TARGET} PUBLIC ${DERAMMO_PRIVATE_SOURCES})
-    target_sources(${DERAMMO_GTEST_TARGET} PUBLIC ${DERAMMO_GTEST_SOURCES})
-    target_link_libraries(${DERAMMO_GTEST_TARGET} gtest_main)
+    target_sources(${DERAMMO_GTEST_TARGET} PRIVATE ${DERAMMO_GTEST_SOURCES})
+    target_link_libraries(${DERAMMO_GTEST_TARGET} ${DERAMMO_TARGET} gtest_main)
+    file(MAKE_DIRECTORY ${DERAMMO_RUNTIME_DIR})
     add_test(NAME ${DERAMMO_GTEST_TARGET}
              COMMAND ${DERAMMO_GTEST_TARGET}
              WORKING_DIRECTORY ${DERAMMO_RUNTIME_DIR})
