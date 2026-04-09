@@ -44,10 +44,10 @@ info:
 # REVISIT: also execute other supported test types
 test: gtest mtest
 gtest: debug
-	cd $(strip $(DERAMMO_PLATFORM))/Debug && ctest --output-on-failure
+	if [ -d $(strip $(DERAMMO_PLATFORM))/Debug ] ; then cd $(strip $(DERAMMO_PLATFORM))/Debug && ctest --output-on-failure ; fi
 mtest: debug 
 	# run maven tests
-	mvn test
+	if [ -f pom.xml ] ; then mvn test ; fi
 
 # XXX: testRelease
 
