@@ -3,10 +3,11 @@
 # to be included from the root level Makefile of a project (automatically done if cmake/setup.make is used to initialize the root)
 
 # inventory
-DERAMMO_PLATFORM := $(shell uname -s) 
+DERAMMO_PLATFORM := $(strip $(shell uname -s))
 DERAMMO_CMAKE_LISTS := $(shell find . -name "CMakeLists.txt") cmake/main.make
 DERAMMO_CMAKE_SOURCES := $(wildcard cmake/derammo*.cmake)
 
+.PHONY: all clean squeaky release package docker relWithDebInfo debug probe info test gtest mtest
 all: release $(DERAMMO_ALL_TARGETS)
 
 clean: 
@@ -15,22 +16,22 @@ clean:
 	if [ -d $$(/usr/bin/uname -s)/Debug ] ; then cd $$(/usr/bin/uname -s)/Debug && make clean ; fi
 
 squeaky: $(DERAMMO_SQUEAKY_TARGETS)
-	rm -rf $(strip $(DERAMMO_PLATFORM))
+	rm -rf $(DERAMMO_PLATFORM)
 	rm -rf Windows
 	
-release: $(strip $(DERAMMO_PLATFORM))/Release $(strip $(DERAMMO_PLATFORM))/Release/Makefile
+release: $(DERAMMO_PLATFORM)/Release $(DERAMMO_PLATFORM)/Release/Makefile
 	cd $< && make
 
-package: $(strip $(DERAMMO_PLATFORM))/Release $(strip $(DERAMMO_PLATFORM))/Release/Makefile
+package: $(DERAMMO_PLATFORM)/Release $(DERAMMO_PLATFORM)/Release/Makefile
 	cd $< && make package
 
-docker: $(strip $(DERAMMO_PLATFORM))/Release $(strip $(DERAMMO_PLATFORM))/Release/Makefile
-	cd $< && make docker
+docker: $(DERAMMO_PLATFORM)/Release $(DERAMMO_PLATFORM)/Release/Makefile
+	cd $< && make docker || true
 
-relWithDebInfo: $(strip $(DERAMMO_PLATFORM))/RelWithDebInfo $(strip $(DERAMMO_PLATFORM))/RelWithDebInfo/Makefile
+relWithDebInfo: $(DERAMMO_PLATFORM)/RelWithDebInfo $(DERAMMO_PLATFORM)/RelWithDebInfo/Makefile
 	cd $< && make
 
-debug: $(strip $(DERAMMO_PLATFORM))/Debug $(strip $(DERAMMO_PLATFORM))/Debug/Makefile
+debug: $(DERAMMO_PLATFORM)/Debug $(DERAMMO_PLATFORM)/Debug/Makefile
 	cd $< && make
 
 probe: ${DERAMMO_PLATFORM}
@@ -44,7 +45,7 @@ info:
 # REVISIT: also execute other supported test types
 test: gtest mtest
 gtest: debug
-	if [ -d $(strip $(DERAMMO_PLATFORM))/Debug ] ; then cd $(strip $(DERAMMO_PLATFORM))/Debug && ctest --output-on-failure ; fi
+	if [ -d $(DERAMMO_PLATFORM)/Debug ] ; then cd $(DERAMMO_PLATFORM)/Debug && ctest --output-on-failure ; fi
 mtest: debug 
 	# run maven tests
 	if [ -f pom.xml ] ; then mvn test ; fi
@@ -54,13 +55,13 @@ mtest: debug
 # XXX: if we don't use gtest, how will this tie into release builds?
 
 # generate required folders
-$(strip $(DERAMMO_PLATFORM))/Release:
+$(DERAMMO_PLATFORM)/Release:
 	mkdir -p $@
-$(strip $(DERAMMO_PLATFORM))/Debug:
+$(DERAMMO_PLATFORM)/Debug:
 	mkdir -p $@
-$(strip $(DERAMMO_PLATFORM))/RelWithDebInfo:
+$(DERAMMO_PLATFORM)/RelWithDebInfo:
 	mkdir -p $@
 
 # recompile cmake if necessary
-$(strip $(DERAMMO_PLATFORM))/%/Makefile: $(DERAMMO_CMAKE_SOURCES) $(DERAMMO_CMAKE_LISTS) Makefile
-	cmake -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -S . -B $(strip $(DERAMMO_PLATFORM))/$* -DCMAKE_BUILD_TYPE=$* -DDERAMMO_RELATIVE_BINARY_DIR=$(strip $(DERAMMO_PLATFORM))/$*
+$(DERAMMO_PLATFORM)/%/Makefile: $(DERAMMO_CMAKE_SOURCES) $(DERAMMO_CMAKE_LISTS) Makefile
+	cmake -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -S . -B $(DERAMMO_PLATFORM)/$* -DCMAKE_BUILD_TYPE=$* -DDERAMMO_RELATIVE_BINARY_DIR=$(DERAMMO_PLATFORM)/$*
