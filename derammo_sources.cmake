@@ -6,8 +6,11 @@ function(derammo_scan_library_sources DERAMMO_TARGET DERAMMO_LIBRARY_TYPE)
         RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
         CONFIGURE_DEPENDS
         ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/*.cxx
+        ${CMAKE_CURRENT_SOURCE_DIR}/*.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/*.c
         ${CMAKE_CURRENT_SOURCE_DIR}/*.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/*.hh
         ${CMAKE_CURRENT_SOURCE_DIR}/*.h
     )
     message(STATUS "${DERAMMO_TARGET} public sources: ${DERAMMO_PUBLIC_SOURCES}")
@@ -18,6 +21,7 @@ function(derammo_scan_library_sources DERAMMO_TARGET DERAMMO_LIBRARY_TYPE)
         RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
         CONFIGURE_DEPENDS
         ${CMAKE_CURRENT_SOURCE_DIR}/include/*.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/*.hh
         ${CMAKE_CURRENT_SOURCE_DIR}/include/*.hpp
     )
     message(STATUS "${DERAMMO_TARGET} interface sources: ${DERAMMO_INTERFACE_SOURCES}")
@@ -28,9 +32,12 @@ function(derammo_scan_library_sources DERAMMO_TARGET DERAMMO_LIBRARY_TYPE)
         RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
         CONFIGURE_DEPENDS
         ${CMAKE_CURRENT_SOURCE_DIR}/src/*.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/*.hh
         ${CMAKE_CURRENT_SOURCE_DIR}/src/*.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cxx
     )
     message(STATUS "${DERAMMO_TARGET} private sources: ${DERAMMO_PRIVATE_SOURCES}")
     set(DERAMMO_PRIVATE_SOURCES ${DERAMMO_PRIVATE_SOURCES} PARENT_SCOPE)
@@ -40,9 +47,12 @@ function(derammo_scan_library_sources DERAMMO_TARGET DERAMMO_LIBRARY_TYPE)
         RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
         CONFIGURE_DEPENDS
         ${CMAKE_CURRENT_SOURCE_DIR}/gtest/*.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/gtest/*.hh
         ${CMAKE_CURRENT_SOURCE_DIR}/gtest/*.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/gtest/*.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/gtest/*.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/gtest/*.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/gtest/*.cxx
     )
     message(STATUS "${DERAMMO_TARGET} gtest sources: ${DERAMMO_GTEST_SOURCES}")
     set(DERAMMO_GTEST_SOURCES ${DERAMMO_GTEST_SOURCES} PARENT_SCOPE)
