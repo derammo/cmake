@@ -42,23 +42,7 @@ function(derammo_add_sources DERAMMO_TARGET)
     target_sources(${DERAMMO_TARGET} PRIVATE ${DERAMMO_PRIVATE_SOURCES})
 endfunction()
 
-# helper to add a default gtest binary
-function(derammo_add_gtest_target DERAMMO_TARGET)
-    set(DERAMMO_GTEST_TARGET ${DERAMMO_TARGET}_gtest)
-    set(DERAMMO_GTEST_TARGET ${DERAMMO_GTEST_TARGET} PARENT_SCOPE)
-    
-    # create testing target, linking against the library to get includes and symbols
-    add_executable(${DERAMMO_GTEST_TARGET})
-    target_sources(${DERAMMO_GTEST_TARGET} PUBLIC ${DERAMMO_INTERFACE_SOURCES})
-    target_sources(${DERAMMO_GTEST_TARGET} PRIVATE ${DERAMMO_GTEST_SOURCES})
-    target_link_libraries(${DERAMMO_GTEST_TARGET} ${DERAMMO_TARGET} gtest_main)
-    file(MAKE_DIRECTORY ${DERAMMO_RUNTIME_DIR})
-    include(GoogleTest)
-    gtest_discover_tests(${DERAMMO_GTEST_TARGET}
-                         WORKING_DIRECTORY ${DERAMMO_RUNTIME_DIR})
-endfunction()
-
-# automatically set up a library using all sources found
+# automatically set up a library using all sources found instead of using sources.cmake frozen list
 macro(derammo_add_library_auto DERAMMO_TARGET DERAMMO_LIBRARY_TYPE)
     add_library(${DERAMMO_TARGET} ${DERAMMO_LIBRARY_TYPE})
   

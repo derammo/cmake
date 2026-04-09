@@ -7,7 +7,7 @@ DERAMMO_PLATFORM := $(strip $(shell uname -s))
 DERAMMO_CMAKE_LISTS := $(shell find . -name "CMakeLists.txt") cmake/main.make
 DERAMMO_CMAKE_SOURCES := $(wildcard cmake/derammo*.cmake)
 
-.PHONY: all clean squeaky release package docker relWithDebInfo debug probe info test gtest mtest
+.PHONY: all clean squeaky release package docker relWithDebInfo debug probe info test gtest mtest trace
 all: release $(DERAMMO_ALL_TARGETS)
 
 clean: 
@@ -65,3 +65,7 @@ $(DERAMMO_PLATFORM)/RelWithDebInfo:
 # recompile cmake if necessary
 $(DERAMMO_PLATFORM)/%/Makefile: $(DERAMMO_CMAKE_SOURCES) $(DERAMMO_CMAKE_LISTS) Makefile
 	cmake -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -S . -B $(DERAMMO_PLATFORM)/$* -DCMAKE_BUILD_TYPE=$* -DDERAMMO_RELATIVE_BINARY_DIR=$(DERAMMO_PLATFORM)/$*
+
+# compile cmake for debug tracing of CMake operation
+trace: $(DERAMMO_CMAKE_SOURCES) $(DERAMMO_CMAKE_LISTS) Makefile
+	cmake --trace -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -S . -B $(DERAMMO_PLATFORM)/Debug -DCMAKE_BUILD_TYPE=Debug -DDERAMMO_RELATIVE_BINARY_DIR=$(DERAMMO_PLATFORM)/Debug
