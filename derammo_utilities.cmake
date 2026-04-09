@@ -8,10 +8,10 @@ macro(derammo_build_only_once DERAMMO_PROJECT_NAME DERAMMO_SOURCE_PATH)
   get_property(DERAMMO_ALREADY_BUILT GLOBAL PROPERTY DERAMMO_HAS_BUILT_${DERAMMO_PROJECT_NAME})
   if ("${DERAMMO_ALREADY_BUILT}" STREQUAL "")
     # note the fact that we have built this
-    set_property(GLOBAL PROPERTY DERAMMO_HAS_BUILT_${DERAMMO_PROJECT_NAME} DERAMMO_SOURCE_PATH)
+    set_property(GLOBAL PROPERTY DERAMMO_HAS_BUILT_${DERAMMO_PROJECT_NAME} ${DERAMMO_SOURCE_PATH})
   else()
     # return from calling file, since this is a macro
-    message(STATUS "${DERAMMO_PROJECT_NAME} has already been built from '${${DERAMMO_ALREADY_BUILT}}'; skipping")
+    message(STATUS "${DERAMMO_PROJECT_NAME} has already been built from '${DERAMMO_ALREADY_BUILT}'; skipping")
     return()
   endif()
 endmacro()
