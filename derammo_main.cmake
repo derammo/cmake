@@ -53,9 +53,4 @@ macro(derammo_add_library_auto DERAMMO_TARGET DERAMMO_LIBRARY_TYPE)
     # automatically add all sources
     derammo_scan_library_sources(${DERAMMO_TARGET} ${DERAMMO_LIBRARY_TYPE})
     derammo_add_sources(${DERAMMO_TARGET})
-
-    # create gtest target if any testing sources are found
-    if (NOT "${DERAMMO_GTEST_SOURCES}" STREQUAL "")
-        derammo_add_gtest_target(${DERAMMO_TARGET})
-    endif()
 endmacro()

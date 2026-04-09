@@ -32,5 +32,8 @@ endfunction()
 # helper for projects that just want to add all gtest sources, regardless of whether they use fixed sources for production code
 function(derammo_add_gtest_auto DERAMMO_TARGET DERAMMO_LIBRARY_TYPE)
     derammo_scan_gtest_sources(${DERAMMO_TARGET} ${DERAMMO_LIBRARY_TYPE})
-    derammo_add_gtest_target(${DERAMMO_TARGET})
+    # create gtest target if any testing sources are found
+    if (NOT "${DERAMMO_GTEST_SOURCES}" STREQUAL "")
+        derammo_add_gtest_target(${DERAMMO_TARGET})
+    endif()
 endfunction()
