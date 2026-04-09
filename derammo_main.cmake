@@ -13,6 +13,9 @@ include("derammo_paths")
 # no support for rerunning cmake from build directory
 set(CMAKE_SUPPRESS_REGENERATION true)
 
+# enable ctest integration
+enable_testing()
+
 # standard defines
 add_compile_definitions(
   $<$<NOT:$<CONFIG:Debug>>:NDEBUG>
@@ -50,6 +53,9 @@ function(derammo_add_gtest_target DERAMMO_TARGET)
     target_sources(${DERAMMO_GTEST_TARGET} PUBLIC ${DERAMMO_PRIVATE_SOURCES})
     target_sources(${DERAMMO_GTEST_TARGET} PUBLIC ${DERAMMO_GTEST_SOURCES})
     target_link_libraries(${DERAMMO_GTEST_TARGET} gtest_main)
+    add_test(NAME ${DERAMMO_GTEST_TARGET}
+             COMMAND ${DERAMMO_GTEST_TARGET}
+             WORKING_DIRECTORY ${DERAMMO_RUNTIME_DIR})
 endfunction()
 
 # automatically set up a library using all sources found

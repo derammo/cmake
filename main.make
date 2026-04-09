@@ -44,8 +44,7 @@ info:
 # REVISIT: also execute other supported test types
 test: gtest mtest
 gtest: debug
-    # REVISIT: decide if we want to use CTest or something else instead of this trivial runner
-	cd Linux/Debug/runtime && for tester in ../bin/*_gtest ; do $${tester} ; done
+	cd $(strip $(DERAMMO_PLATFORM))/Debug && ctest --output-on-failure
 mtest: debug 
 	# run maven tests
 	mvn test
