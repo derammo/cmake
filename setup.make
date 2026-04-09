@@ -20,15 +20,15 @@ library: ../CMakeLists.txt
 		>> CMakeLists.txt && \
 	echo "include(sources.cmake)" \
 		>> CMakeLists.txt && \
-	for local in *.cpp *.h ; do \
+	for local in *.cpp *.cxx *.cc *.c *.hpp *.hh *.h ; do \
 		[ -f $${local} ] && echo "target_sources($${PROJECT_NAME} PUBLIC $${local})" > sources.cmake || true ; \
 	done ; \
-	for interface in $$(find include -name '*.h') ; do \
+	for interface in $$(find include -name '*.h' -or -name '*.hh' -or -name '*.hpp') ; do \
 		[ -f $${interface} ] && echo "target_sources($${PROJECT_NAME} INTERFACE $${interface})" >> sources.cmake || true ; \
 	done ; \
-	for private in $$(find src -name '*.cpp' -or -name '*.c' -or -name '*.h') ; do \
+	for private in $$(find src -name '*.cpp' -or -name '*.cxx' -or -name '*.cc' -or -name '*.c' -or -name '*.hpp' -or -name '*.hh' -or -name '*.h') ; do \
 		[ -f $${private} ] && echo "target_sources($${PROJECT_NAME} PRIVATE $${private})" >> sources.cmake || true ; \
-	done 
+	done
 
 # initialize a static library target in a subfolder of the root
 static:
@@ -43,12 +43,12 @@ executable: ../CMakeLists.txt
 		>> CMakeLists.txt && \
 	echo "include(sources.cmake)" \
 		>> CMakeLists.txt && \
-	for local in *.cpp *.h ; do \
+	for local in *.cpp *.cxx *.cc *.c *.hpp *.hh *.h ; do \
 		[ -f $${local} ] && echo "target_sources($${PROJECT_NAME} PUBLIC $${local})" > sources.cmake || true ; \
 	done ; \
-	for private in $$(find src -name '*.cpp' -or -name '*.c' -or -name '*.h') ; do \
+	for private in $$(find src -name '*.cpp' -or -name '*.cxx' -or -name '*.cc' -or -name '*.c' -or -name '*.hpp' -or -name '*.hh' -or -name '*.h') ; do \
 		[ -f $${private} ] && echo "target_sources($${PROJECT_NAME} PRIVATE $${private})" > sources.cmake || true ; \
-	done 
+	done
 
 Makefile: | cmake/setup_templates/Makefile.init
 	cp cmake/setup_templates/Makefile.init $@
