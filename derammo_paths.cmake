@@ -1,3 +1,6 @@
+# read property set by project() invocation
+get_property(_derammo_is_multi_config GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+
 if(UNIX)
 	# we generate a separate build tree for each build type, so no need to include that in the paths
 	set(DERAMMO_BUILD_OUTPUT_PATH	"${CMAKE_CURRENT_BINARY_DIR}")
@@ -6,7 +9,7 @@ if(UNIX)
 	set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY	${DERAMMO_BUILD_OUTPUT_PATH}/lib)
 	set(DERAMMO_INSTALL_INIT_D "/etc/init.d")
 	set(DERAMMO_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}/")
-elseif(MSVC)
+elseif(_derammo_is_multi_config)
 	set(DERAMMO_BUILD_OUTPUT_PATH "${CMAKE_CURRENT_BINARY_DIR}/build")
 	set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG	${DERAMMO_BUILD_OUTPUT_PATH}/bin/Debug)
 	set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO	${DERAMMO_BUILD_OUTPUT_PATH}/bin/RelWithDebInfo)
@@ -17,6 +20,10 @@ elseif(MSVC)
 	set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_DEBUG	${DERAMMO_BUILD_OUTPUT_PATH}/lib/Debug)
 	set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_RELWITHDEBINFO	${DERAMMO_BUILD_OUTPUT_PATH}/lib/RelWithDebInfo)
 	set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_RELEASE	${DERAMMO_BUILD_OUTPUT_PATH}/lib/Release)
+endif()
+
+if(MSVC)
+	# dummy locations, since we don't currently use install on MSVC
 	set(DERAMMO_INSTALL_INIT_D init.d)
 	set(DERAMMO_INSTALL_PREFIX "")
 endif()
