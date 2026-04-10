@@ -20,8 +20,9 @@ library: ../CMakeLists.txt
 		>> CMakeLists.txt && \
 	echo "include(sources.cmake)" \
 		>> CMakeLists.txt && \
+	: > sources.cmake && \
 	for local in *.cpp *.cxx *.cc *.c *.hpp *.hh *.h ; do \
-		[ -f $${local} ] && echo "target_sources($${PROJECT_NAME} PUBLIC $${local})" > sources.cmake || true ; \
+		[ -f $${local} ] && echo "target_sources($${PROJECT_NAME} PUBLIC $${local})" >> sources.cmake || true ; \
 	done ; \
 	for interface in $$(find include -type f \( -name '*.h' -or -name '*.hh' -or -name '*.hpp' \)) ; do \
 		[ -f $${interface} ] && echo "target_sources($${PROJECT_NAME} INTERFACE $${interface})" >> sources.cmake || true ; \
@@ -43,11 +44,12 @@ executable: ../CMakeLists.txt
 		>> CMakeLists.txt && \
 	echo "include(sources.cmake)" \
 		>> CMakeLists.txt && \
+	: > sources.cmake && \
 	for local in *.cpp *.cxx *.cc *.c *.hpp *.hh *.h ; do \
-		[ -f $${local} ] && echo "target_sources($${PROJECT_NAME} PUBLIC $${local})" > sources.cmake || true ; \
+		[ -f $${local} ] && echo "target_sources($${PROJECT_NAME} PUBLIC $${local})" >> sources.cmake || true ; \
 	done ; \
 	for private in $$(find src -type f \( -name '*.cpp' -or -name '*.cxx' -or -name '*.cc' -or -name '*.c' -or -name '*.hpp' -or -name '*.hh' -or -name '*.h' \)) ; do \
-		[ -f $${private} ] && echo "target_sources($${PROJECT_NAME} PRIVATE $${private})" > sources.cmake || true ; \
+		[ -f $${private} ] && echo "target_sources($${PROJECT_NAME} PRIVATE $${private})" >> sources.cmake || true ; \
 	done
 
 Makefile: | cmake/setup_templates/Makefile.init
