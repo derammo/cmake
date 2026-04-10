@@ -1,6 +1,8 @@
 # cmake
 my cmake scripts as a submodule
 
+[![validate with cmake_tests](https://github.com/derammo/cmake/actions/workflows/validate_with_cmake_tests.yml/badge.svg)](https://github.com/derammo/cmake/actions/workflows/validate_with_cmake_tests.yml)
+
 ## installation
 
 from the top of any project, run:
