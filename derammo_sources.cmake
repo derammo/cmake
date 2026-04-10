@@ -41,25 +41,4 @@ function(derammo_scan_library_sources DERAMMO_TARGET DERAMMO_LIBRARY_TYPE)
     )
     message(STATUS "${DERAMMO_TARGET} private sources: ${DERAMMO_PRIVATE_SOURCES}")
     set(DERAMMO_PRIVATE_SOURCES ${DERAMMO_PRIVATE_SOURCES} PARENT_SCOPE)
-
-    # scan for gtest sources and hoist
-    derammo_scan_gtest_sources(${DERAMMO_TARGET} ${DERAMMO_LIBRARY_TYPE})
-    set(DERAMMO_GTEST_SOURCES ${DERAMMO_GTEST_SOURCES} PARENT_SCOPE)
-endfunction()
-
-function(derammo_scan_gtest_sources DERAMMO_TARGET DERAMMO_LIBRARY_TYPE)
-    file(GLOB_RECURSE DERAMMO_GTEST_SOURCES
-        LIST_DIRECTORIES false
-        RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
-        CONFIGURE_DEPENDS
-        ${CMAKE_CURRENT_SOURCE_DIR}/gtest/*.h
-        ${CMAKE_CURRENT_SOURCE_DIR}/gtest/*.hh
-        ${CMAKE_CURRENT_SOURCE_DIR}/gtest/*.hpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/gtest/*.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/gtest/*.cc
-        ${CMAKE_CURRENT_SOURCE_DIR}/gtest/*.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/gtest/*.cxx
-    )
-    message(STATUS "${DERAMMO_TARGET} gtest sources: ${DERAMMO_GTEST_SOURCES}")
-    set(DERAMMO_GTEST_SOURCES ${DERAMMO_GTEST_SOURCES} PARENT_SCOPE)
 endfunction()
