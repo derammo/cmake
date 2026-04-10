@@ -1,0 +1,52 @@
+name: validate with cmake_tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: validate-cmake-tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out derammo/cmake (code under test)
+        uses: actions/checkout@v4
+        with:
+          path: cmake-under-test
+
+      - name: Check out derammo/cmake_tests (HEAD of main)
+        uses: actions/checkout@v4
+        with:
+          repository: derammo/cmake_tests
+          ref: main
+          path: cmake_tests
+          submodules: false
+
+      - name: Overlay cmake-under-test into both submodule paths
+        run: |
+          set -eux
+          rm -rf cmake_tests/cmake cmake_tests/examples/cmake
+          cp -a cmake-under-test cmake_tests/cmake
+          cp -a cmake-under-test cmake_tests/examples/cmake
+          test -f cmake_tests/cmake/setup.make
+          test -f cmake_tests/examples/cmake/main.make
+
+      - name: Show toolchain versions
+        run: |
+          cmake --version
+          g++ --version
+          make --version
+
+      - name: Run top-level make test (shell-harness suite)
+        working-directory: cmake_tests
+        run: make test
+
+      - name: Run examples make test (gtest + ctest)
+        working-directory: cmake_tests/examples
+        run: make test
