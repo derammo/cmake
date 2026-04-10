@@ -57,7 +57,7 @@ Makefile: | cmake/setup_templates/Makefile.init
 
 CMakeLists.txt: | cmake/setup_templates/CMakeLists.init
 	PROJECT_NAME=$$(basename $$(pwd)) && \
-	sed -e s/REPLACE_PROJECT_NAME/$${PROJECT_NAME}/ < cmake/setup_templates/CMakeLists.init > $@
+	sed -e s/REPLACE_PROJECT_NAME/$${PROJECT_NAME}/g < cmake/setup_templates/CMakeLists.init > $@
 
 	# create initial list of subdirectories by exclusion of known names
 	PROJECTS="$$(find . -maxdepth 1 \
