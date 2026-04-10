@@ -19,7 +19,7 @@ function(derammo_maven_build)
 		
 		# unpack all the archives so we can path into them for licenses and inspection
 		COMMAND mkdir -p ${CMAKE_BINARY_DIR}/${DERAMMO_JAVABUILD_OUTPUT}/unpack
-		COMMAND cd ${CMAKE_BINARY_DIR}/${DERAMMO_JAVABUILD_OUTPUT}/lib \; for archive in *.jar \; do unzip -q -d ../unpack/$$\{archive\} -o -u $$\{archive\} META-INF/\\* \; done
+		COMMAND cd "${CMAKE_BINARY_DIR}/${DERAMMO_JAVABUILD_OUTPUT}/lib" \; for archive in *.jar \; do unzip -q -d "../unpack/$$\{archive\}" -o -u "$$\{archive\}" META-INF/\\* \; done
 		
 		# declare what files we created
 		BYPRODUCTS ${CMAKE_BINARY_DIR}/${DERAMMO_JAVABUILD_OUTPUT}
