@@ -16,12 +16,12 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Check out derammo/cmake (code under test)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           path: cmake-under-test
 
       - name: Check out derammo/cmake_tests (HEAD of main)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: derammo/cmake_tests
           ref: main
