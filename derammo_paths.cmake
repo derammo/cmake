@@ -1,3 +1,5 @@
+include_guard()
+
 # read property set by project() invocation
 get_property(_derammo_is_multi_config GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
 

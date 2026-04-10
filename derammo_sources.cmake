@@ -1,3 +1,5 @@
+include_guard()
+
 function(derammo_scan_library_sources DERAMMO_TARGET DERAMMO_LIBRARY_TYPE)
     message(STATUS "${DERAMMO_TARGET} looking for sources in ${CMAKE_CURRENT_SOURCE_DIR}")
 

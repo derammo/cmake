@@ -1,3 +1,5 @@
+include_guard()
+
 function(derammo_maven_build)
 	message(STATUS "building maven projects with output to '${DERAMMO_RELATIVE_BINARY_DIR}/${DERAMMO_JAVABUILD_OUTPUT}'")
 

@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 3.13.0)
+include_guard()
 
 if(MSVC)
     # for MSVC allow compiler extensions, which are often needed for Windows compatibility

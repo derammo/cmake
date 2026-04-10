@@ -1,3 +1,5 @@
+include_guard()
+
 function(derammo_assert_non_empty DERAMMO_VARIABLE)
   if ("${${DERAMMO_VARIABLE}}" STREQUAL "")
     message(FATAL_ERROR "unexpected: the DERAMMO_VARIABLE ${DERAMMO_VARIABLE} is empty or not set")

@@ -1,4 +1,5 @@
 # to be included before cmake/derammo_main.cmake, if Google test is used
+include_guard()
 
 # download and import, without submodule
 include(FetchContent)
