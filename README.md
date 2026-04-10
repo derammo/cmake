@@ -40,3 +40,9 @@ make -f ../cmake/setup.make library
 
 to create a pretty decent default configuration for a library in the current directory.  Similar targets exist for executables and other typical uses for a subdirectory.
 
+## examples
+
+Example usage can be found at https://github.com/derammo/cmake_tests/tree/main/examples
+
+For example, a simple library target with globbing (uses all files currently in the tree, instead of a list of source files) is shown here:
+https://github.com/derammo/cmake_tests/blob/main/examples/autolib/CMakeLists.txt
