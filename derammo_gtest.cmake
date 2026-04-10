@@ -8,7 +8,7 @@ FetchContent_Declare(
     GIT_TAG        v1.14.0
 )
 if(WIN32)
-    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+    set(gtest_force_shared_crt ON CACHE BOOL "for googletest on Windows")
 endif()
 FetchContent_MakeAvailable(googletest)
 include(GoogleTest)
