@@ -64,6 +64,8 @@ $(DERAMMO_PLATFORM)/RelWithDebInfo:
 
 # recompile cmake if necessary
 $(DERAMMO_PLATFORM)/%/Makefile: $(DERAMMO_CMAKE_SOURCES) $(DERAMMO_CMAKE_LISTS) Makefile
+	# on platforms where we use make to update the cmake files, we only support g++/gcc as compilers
+	# which is aliased on Darwin to use the preferred compiler there also
 	cmake -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -S . -B $(DERAMMO_PLATFORM)/$* -DCMAKE_BUILD_TYPE=$* -DDERAMMO_RELATIVE_BINARY_DIR=$(DERAMMO_PLATFORM)/$*
 
 # compile cmake for debug tracing of CMake operation
