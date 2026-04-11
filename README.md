@@ -16,22 +16,52 @@ make
 
 then edit the top level CMakeLists.txt to add your project name, vendor, and contact info
 
-## generating configurations
+## make targets (POSIX: Linux, macOS, etc.)
 
-See targets in cmake/main.make, which are included into the root Makefile of your project.  To create a particular distribution, you can 
+`cmake/setup.make root` generates a top-level `Makefile` that `include`s `cmake/main.make`, which provides the following targets. Run them from the project root.
+
+| target          | what it does                                                                                                                    |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `all` (default) | same as `release`                                                                                                               |
+| `release`       | configure and build `<Platform>/Release` (e.g. `Linux/Release`, `Darwin/Release`)                                               |
+| `debug`         | configure and build `<Platform>/Debug`                                                                                          |
+| `relWithDebInfo`| configure and build `<Platform>/RelWithDebInfo`                                                                                 |
+| `package`       | build Release, then run CPack (`make package`) in the Release build dir                                                         |
+| `docker`        | build Release, then run the `docker` custom target if the project defines one (non-fatal if missing)                            |
+| `test`          | build Debug, then run `gtest` and `mtest` (see below)                                                                           |
+| `gtest`         | build Debug, then `ctest --output-on-failure` in the Debug build dir                                                            |
+| `mtest`         | build Debug, then `mvn test` if the project has a `pom.xml` (no-op otherwise)                                                   |
+| `clean`         | run `make clean` inside any existing `<Platform>/{Release,RelWithDebInfo,Debug}` build dir (keeps the dirs themselves)          |
+| `squeaky`       | delete `<Platform>/` and `Windows/` entirely, removing all build artifacts                                                      |
+| `info`          | print the detected platform and the inputs main.make watches for regeneration                                                  |
+| `probe`         | print just the detected platform                                                                                                |
+| `trace`         | re-run cmake with `--trace` into `<Platform>/Debug` for debugging CMake logic                                                   |
+
+`<Platform>` is the output of `uname -s` (`Linux`, `Darwin`, etc.), so build trees for multiple platforms can coexist in the same source tree.
+
+Several of the per-platform paths can also be invoked directly:
 
 ```
 make Linux/Release
 make Linux/Debug
 make Darwin/Debug
 ```
-and so on.  Several of the pre-created targets in cmake/Makefile show how you can have cmake run automatically to refresh the make files and then immediately use them by depending on the generated Makefile.
 
-On Windows, just run cmake\make.cmd to generate all configs or run cmake\open.cmd to generate and immediately open solution(s) in Visual Studio. 
+## Windows (native, via Visual Studio)
+
+Windows does not use `make` — the equivalents live in the `cmake\` submodule and are run from the project root:
+
+| command              | equivalent POSIX target | what it does                                                          |
+| -------------------- | ----------------------- | --------------------------------------------------------------------- |
+| `cmake\make.cmd`     | `make` (all configs)    | generate `Windows\` build tree via `cmake -B Windows -A x64`          |
+| `cmake\open.cmd`     | —                       | run `cmake\make.cmd` then open every generated `.sln` in Visual Studio |
+| `cmake\test.cmd`     | `make test`             | run `ctest --output-on-failure` inside the `Windows\` build tree      |
+
+In particular, **there is no `make test` on Windows** — use `cmake\test.cmd` instead.
 
 ## generating targets for subdirectories
 
-To initialize a suitable config for a library/executable/etc, there are make targets to initialize cmake.  For example, if you have a subdirectory "foo" that should be built as a library, you can 
+To initialize a suitable config for a library/executable/etc, there are make targets to initialize cmake.  For example, if you have a subdirectory "foo" that should be built as a library, you can
 
 ```
 cd foo
