@@ -22,8 +22,11 @@ message(STATUS "module path is: ${CMAKE_MODULE_PATH}")
 # our path preferences by platform
 include("derammo_paths")
 
-# no support for rerunning cmake from build directory
-set(CMAKE_SUPPRESS_REGENERATION true)
+if(MSVC)
+    # REVISIT: no support for rerunning cmake from build directory, since
+    # automatic regeneration is not tested on this platform
+    set(CMAKE_SUPPRESS_REGENERATION true)
+endif()
 
 # enable ctest integration
 enable_testing()
