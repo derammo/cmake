@@ -2,7 +2,7 @@
 	"extends": [
 		"_package_template_version.json"
 	],
-	"name": "@REPLACE_WORKSPACE_NAME/REPLACE_PROJECT_NAME",
+	"name": "REPLACE_SCOPE/REPLACE_PROJECT_NAME",
 	"private": true,
 	"description": "",
 	"license": "UNLICENSED"

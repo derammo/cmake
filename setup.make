@@ -60,16 +60,25 @@ workspaces: ../CMakeLists.txt
 		cp $(DERAMMO_SETUP_DIR)npm_package_templates/_package_template_version.json templates/
 	[ -f .gitignore ] || cp $(DERAMMO_SETUP_DIR)setup_templates/npm_gitignore.init .gitignore
 
+# the scope for a new package's name comes from the name declared in the enclosing
+# workspace's _package_template.json (e.g. "@foo/packages" scopes new packages as
+# "@foo/..."); the workspace folder's basename is only the fallback
+define DERAMMO_NPM_SCOPE
+	WORKSPACE_SCOPE=$$(node -p 'String(JSON.parse(require("fs").readFileSync("../_package_template.json", "utf8")).name || "").split("/")[0]' 2>/dev/null || true) ; \
+	[ -n "$$WORKSPACE_SCOPE" ] || WORKSPACE_SCOPE=$$(basename $$(dirname $$(pwd))) ; \
+	case "$$WORKSPACE_SCOPE" in @*) ;; *) WORKSPACE_SCOPE="@$$WORKSPACE_SCOPE" ;; esac
+endef
+
 # initialize an npm package with typescript and vitest support in a subfolder of a workspace root
 # all files are only created if not already present, so this can be run against an existing package
 typescript: ../CMakeLists.txt
 	$(DERAMMO_NPM_GUARD)
 	[ -f CMakeLists.txt ] || cp $(DERAMMO_SETUP_DIR)setup_templates/npm_package_CMakeLists.init CMakeLists.txt
 	[ -f _package_template.json ] || { \
-		PROJECT_NAME=$$(basename $$(pwd)) && \
-		WORKSPACE_NAME=$$(basename $$(dirname $$(pwd))) && \
+		PROJECT_NAME=$$(basename $$(pwd)) ; \
+		$(DERAMMO_NPM_SCOPE) ; \
 		sed -e s/REPLACE_PROJECT_NAME/$${PROJECT_NAME}/g \
-			-e s/REPLACE_WORKSPACE_NAME/$${WORKSPACE_NAME}/g \
+			-e "s,REPLACE_SCOPE,$$WORKSPACE_SCOPE,g" \
 			< $(DERAMMO_SETUP_DIR)setup_templates/npm_typescript_package_template.init \
 			> _package_template.json ; }
 	[ -f tsconfig.json ] || cp $(DERAMMO_SETUP_DIR)setup_templates/npm_tsconfig.init tsconfig.json
@@ -84,10 +93,10 @@ npm: ../CMakeLists.txt
 	$(DERAMMO_NPM_GUARD)
 	[ -f CMakeLists.txt ] || cp $(DERAMMO_SETUP_DIR)setup_templates/npm_package_CMakeLists.init CMakeLists.txt
 	[ -f _package_template.json ] || { \
-		PROJECT_NAME=$$(basename $$(pwd)) && \
-		WORKSPACE_NAME=$$(basename $$(dirname $$(pwd))) && \
+		PROJECT_NAME=$$(basename $$(pwd)) ; \
+		$(DERAMMO_NPM_SCOPE) ; \
 		sed -e s/REPLACE_PROJECT_NAME/$${PROJECT_NAME}/g \
-			-e s/REPLACE_WORKSPACE_NAME/$${WORKSPACE_NAME}/g \
+			-e "s,REPLACE_SCOPE,$$WORKSPACE_SCOPE,g" \
 			< $(DERAMMO_SETUP_DIR)setup_templates/npm_plain_package_template.init \
 			> _package_template.json ; }
 

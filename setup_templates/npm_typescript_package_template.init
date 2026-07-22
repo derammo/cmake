@@ -4,7 +4,7 @@
 		"_package_template_typescript.json",
 		"_package_template_vitest.json"
 	],
-	"name": "@REPLACE_WORKSPACE_NAME/REPLACE_PROJECT_NAME",
+	"name": "REPLACE_SCOPE/REPLACE_PROJECT_NAME",
 	"private": true,
 	"description": "",
 	"license": "UNLICENSED"
