@@ -15,9 +15,13 @@ clean:
 	if [ -d $$(/usr/bin/uname -s)/RelWithDebInfo ] ; then cd $$(/usr/bin/uname -s)/RelWithDebInfo && make clean ; fi
 	if [ -d $$(/usr/bin/uname -s)/Debug ] ; then cd $$(/usr/bin/uname -s)/Debug && make clean ; fi
 
-squeaky: $(DERAMMO_SQUEAKY_TARGETS)
+# npm folders below the root are removed by the clean target, which visits exactly
+# the directories that declared npm support; other npm packages in the same source
+# tree are not ours to touch
+squeaky: clean $(DERAMMO_SQUEAKY_TARGETS)
 	rm -rf $(DERAMMO_PLATFORM)
 	rm -rf Windows
+	rm -rf node_modules cmake/scripts/node_modules
 	
 release: $(DERAMMO_PLATFORM)/Release $(DERAMMO_PLATFORM)/Release/Makefile
 	cd $< && make

@@ -1,0 +1,7 @@
+{
+	"extends": [
+		"_package_template_version.json"
+	],
+	"name": "REPLACE_PROJECT_NAME",
+	"private": true
+}

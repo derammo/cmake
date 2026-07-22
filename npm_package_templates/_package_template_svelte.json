@@ -1,0 +1,29 @@
+{
+  "scripts": {
+    "dev": "NODE_OPTIONS=--inspect vite -l info dev",
+    "build": "vite build",
+    "build:watch": "vite build --watch",
+    "preview": "vite preview --port 3001",
+    "debug-preview": "NODE_OPTIONS=--inspect vite preview",
+    "test": "vitest",
+    "test:watch": "vitest --watch"
+  },
+  "dependencies": {
+    "bootstrap": "^5.3.8",
+    "module-alias": "^2.2.3",
+    "svelte-check": "^4.3.4"
+  },
+  "devDependencies": {
+    "@sveltejs/kit": "^2.49.1",
+    "@sveltejs/vite-plugin-svelte": "^6.0.0",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/svelte": "^5.2.9",
+    "jsdom": "^27.2.0",
+    "svelte": "^5.45.5",
+    "vite": "^7.2.6",
+    "vite-plugin-node": "^7.0.0",
+    "vite-tsconfig-paths": "^5.1.4",
+    "vitest": "^4.0.15"
+  }
+}

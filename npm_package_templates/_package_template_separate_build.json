@@ -1,0 +1,15 @@
+{
+  "exports": {
+    ".": {
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "npm run lint && tsc -p tsconfig.build.json",
+    "build:watch": "tsc -p tsconfig.build.json && tsc -p tsconfig.build.json --watch",
+    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\" \"vitest.config.ts\""
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0"
+  }
+}

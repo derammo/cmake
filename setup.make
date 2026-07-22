@@ -6,6 +6,9 @@
 # initialize a new project to use this cmake system via a "cmake" folder in that project's root
 root: Makefile CMakeLists.txt .gitignore
 
+# location of this makefile's folder, so npm targets can be run from subdirectories at any depth
+DERAMMO_SETUP_DIR := $(dir $(lastword $(MAKEFILE_LIST)))
+
 # default library type
 DERAMMO_LIBRARY_TYPE=SHARED
 
@@ -30,6 +33,63 @@ library: ../CMakeLists.txt
 	for private in $$(find src -type f \( -name '*.cpp' -or -name '*.cxx' -or -name '*.cc' -or -name '*.c' -or -name '*.hpp' -or -name '*.hh' -or -name '*.h' \)) ; do \
 		[ -f $${private} ] && echo "target_sources($${PROJECT_NAME} PRIVATE $${private})" >> sources.cmake || true ; \
 	done
+
+# refuse to set up npm support on top of an existing package.json, since the build
+# will replace it with a generated file
+define DERAMMO_NPM_GUARD
+	@if [ -f package.json ] ; then \
+		echo "ERROR: package.json already exists in $$(pwd)" ; \
+		echo "this setup action will replace package.json with one generated from templates" ; \
+		echo "manually rename it (to keep it for reference) or delete it before running this command" ; \
+		false ; \
+	fi
+endef
+
+# initialize an npm workspace root in a subfolder of the root
+# all files are only created if not already present, so this can be run against an existing folder
+workspaces: ../CMakeLists.txt
+	$(DERAMMO_NPM_GUARD)
+	[ -f CMakeLists.txt ] || cp $(DERAMMO_SETUP_DIR)setup_templates/npm_workspaces_CMakeLists.init CMakeLists.txt
+	[ -f _package_template.json ] || { \
+		PROJECT_NAME=$$(basename $$(pwd)) && \
+		sed -e s/REPLACE_PROJECT_NAME/$${PROJECT_NAME}/g \
+			< $(DERAMMO_SETUP_DIR)setup_templates/npm_workspaces_package_template.init \
+			> _package_template.json ; }
+	mkdir -p templates
+	[ -f templates/_package_template_version.json ] || \
+		cp $(DERAMMO_SETUP_DIR)npm_package_templates/_package_template_version.json templates/
+	[ -f .gitignore ] || cp $(DERAMMO_SETUP_DIR)setup_templates/npm_gitignore.init .gitignore
+
+# initialize an npm package with typescript and vitest support in a subfolder of a workspace root
+# all files are only created if not already present, so this can be run against an existing package
+typescript: ../CMakeLists.txt
+	$(DERAMMO_NPM_GUARD)
+	[ -f CMakeLists.txt ] || cp $(DERAMMO_SETUP_DIR)setup_templates/npm_package_CMakeLists.init CMakeLists.txt
+	[ -f _package_template.json ] || { \
+		PROJECT_NAME=$$(basename $$(pwd)) && \
+		WORKSPACE_NAME=$$(basename $$(dirname $$(pwd))) && \
+		sed -e s/REPLACE_PROJECT_NAME/$${PROJECT_NAME}/g \
+			-e s/REPLACE_WORKSPACE_NAME/$${WORKSPACE_NAME}/g \
+			< $(DERAMMO_SETUP_DIR)setup_templates/npm_typescript_package_template.init \
+			> _package_template.json ; }
+	[ -f tsconfig.json ] || cp $(DERAMMO_SETUP_DIR)setup_templates/npm_tsconfig.init tsconfig.json
+	[ -f eslint.config.js ] || cp $(DERAMMO_SETUP_DIR)setup_templates/npm_eslint_config.init eslint.config.js
+	mkdir -p src test
+	[ -f src/index.ts ] || cp $(DERAMMO_SETUP_DIR)setup_templates/npm_index_ts.init src/index.ts
+	[ -f test/index.test.ts ] || cp $(DERAMMO_SETUP_DIR)setup_templates/npm_index_test_ts.init test/index.test.ts
+
+# initialize an npm package without anything special in a subfolder of a workspace root
+# all files are only created if not already present, so this can be run against an existing package
+npm: ../CMakeLists.txt
+	$(DERAMMO_NPM_GUARD)
+	[ -f CMakeLists.txt ] || cp $(DERAMMO_SETUP_DIR)setup_templates/npm_package_CMakeLists.init CMakeLists.txt
+	[ -f _package_template.json ] || { \
+		PROJECT_NAME=$$(basename $$(pwd)) && \
+		WORKSPACE_NAME=$$(basename $$(dirname $$(pwd))) && \
+		sed -e s/REPLACE_PROJECT_NAME/$${PROJECT_NAME}/g \
+			-e s/REPLACE_WORKSPACE_NAME/$${WORKSPACE_NAME}/g \
+			< $(DERAMMO_SETUP_DIR)setup_templates/npm_plain_package_template.init \
+			> _package_template.json ; }
 
 # initialize a static library target in a subfolder of the root
 static:

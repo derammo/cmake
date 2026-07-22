@@ -1,0 +1,14 @@
+{
+	"name": "@derammo-cmake/scripts",
+	"version": "1.0.0",
+	"private": true,
+	"type": "module",
+	"description": "build scripts run directly by node without compilation; this package only provides type checking support for development",
+	"scripts": {
+		"build": "tsc"
+	},
+	"devDependencies": {
+		"@types/node": "^24.0.0",
+		"typescript": "^5.9.3"
+	}
+}

@@ -1,0 +1,13 @@
+{
+  "version": "0.1.0",
+  "scripts": {
+    "build": "npm run lint && tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "ssh2": "^1.17.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/ssh2": "^1.15.5"
+  }
+}
