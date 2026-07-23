@@ -68,7 +68,21 @@ cd foo
 make -f ../cmake/setup.make library
 ```
 
-to create a pretty decent default configuration for a library in the current directory.  Similar targets exist for executables and other typical uses for a subdirectory.
+to create a pretty decent default configuration for a library in the current directory.
+
+`cmake/setup.make` is always run from the directory being initialized, e.g. `make -f cmake/setup.make root` from the project root or `make -f ../cmake/setup.make executable` from a subfolder.
+
+| target | run from | initializes |
+| --- | --- | --- |
+| `root` | project root containing the `cmake` folder | a new project root: `Makefile`, top-level `CMakeLists.txt` with `add_subdirectory()` entries and CPack support, and a `.gitignore` (merged with any existing one) |
+| `library` | subfolder of the root | a shared library target: `CMakeLists.txt` plus `sources.cmake` listing local sources (PUBLIC), `include/` headers (INTERFACE), and `src/` files (PRIVATE) |
+| `static` | subfolder of the root | a static library target (runs `library` with `DERAMMO_LIBRARY_TYPE=STATIC`) |
+| `executable` | subfolder of the root | an executable target: `CMakeLists.txt` plus `sources.cmake` listing local sources (PUBLIC) and `src/` files (PRIVATE) |
+| `workspaces` | subfolder of the root | an npm workspace root: `CMakeLists.txt`, `_package_template.json`, `templates/_package_template_version.json`, and `.gitignore` |
+| `typescript` | subfolder of an npm workspace root | an npm package with TypeScript and vitest support: `CMakeLists.txt`, `_package_template.json`, `tsconfig.json`, `eslint.config.js`, `src/index.ts`, and `test/index.test.ts` |
+| `npm` | subfolder of an npm workspace root | a plain npm package: `CMakeLists.txt` and `_package_template.json` |
+
+The npm-related targets (`workspaces`, `typescript`, `npm`) only create files that are not already present, so they can be run against an existing folder — except that they refuse to run if a `package.json` exists, since the build would replace it with a generated file. The remaining rules in `setup.make` (`Makefile`, `CMakeLists.txt`, `.gitignore`) are file rules used as prerequisites of `root`, not targets to invoke directly.
 
 ## examples
 
