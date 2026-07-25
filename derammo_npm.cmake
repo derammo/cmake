@@ -83,10 +83,12 @@ function(derammo_workspaces_auto)
 	# collect the packages that registered from within this workspace
 	get_property(DERAMMO_NPM_PACKAGES GLOBAL PROPERTY DERAMMO_NPM_PACKAGES)
 	set(DERAMMO_NPM_WORKSPACE_FOLDERS "")
+	set(DERAMMO_NPM_MEMBER_DIRS "")
 	foreach(DERAMMO_NPM_PACKAGE ${DERAMMO_NPM_PACKAGES})
 		file(RELATIVE_PATH DERAMMO_NPM_RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "${DERAMMO_NPM_PACKAGE}")
 		if(NOT DERAMMO_NPM_RELATIVE MATCHES "^\\.\\.")
 			list(APPEND DERAMMO_NPM_WORKSPACE_FOLDERS "\"${DERAMMO_NPM_RELATIVE}\"")
+			list(APPEND DERAMMO_NPM_MEMBER_DIRS "${DERAMMO_NPM_PACKAGE}")
 		endif()
 	endforeach()
 	string(JOIN "," DERAMMO_NPM_WORKSPACES_JOINED ${DERAMMO_NPM_WORKSPACE_FOLDERS})
@@ -106,4 +108,91 @@ function(derammo_workspaces_auto)
 		COMMAND npm run test --workspaces --if-present
 		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 	)
+
+	# export state for a subsequent derammo_npm_install() call from the same directory
+	set(DERAMMO_NPM_WORKSPACE_TARGET_PREFIX "${DERAMMO_CURRENT_TARGET_PREFIX}" PARENT_SCOPE)
+	set(DERAMMO_NPM_WORKSPACE_MEMBER_DIRS "${DERAMMO_NPM_MEMBER_DIRS}" PARENT_SCOPE)
+endfunction()
+
+# stage the workspace's production install closure and package it as a CPack
+# component: after the workspace build, npm pack each member (honors "files" in
+# package.json), then npm install all tarballs into a staging prefix, producing
+# real files (no workspace symlinks) with sibling dependencies resolved from
+# the tarballs instead of the registry; call after derammo_workspaces_auto()
+# in the same directory
+#
+# derammo_npm_install(COMPONENT <c> [DESTINATION <d>] [DEPENDS <deb-depends>] [NPM_INSTALL_FLAGS ...])
+#   defaults: DESTINATION ${DERAMMO_INSTALL_LIBDIR}, DEPENDS "nodejs (>= 20)"
+#
+# macro so the CPACK_DEBIAN_..._PACKAGE_DEPENDS variable lands in the parent
+# scope, where the top-level include(CPack) can see it
+macro(derammo_npm_install)
+	_derammo_npm_install_stage(${ARGN})
+	string(TOUPPER "${DERAMMO_NPM_INSTALL_COMPONENT}" DERAMMO_NPM_INSTALL_COMPONENT_UPPER)
+	set(CPACK_DEBIAN_${DERAMMO_NPM_INSTALL_COMPONENT_UPPER}_PACKAGE_DEPENDS "${DERAMMO_NPM_INSTALL_DEPENDS}")
+	set(CPACK_DEBIAN_${DERAMMO_NPM_INSTALL_COMPONENT_UPPER}_PACKAGE_DEPENDS "${DERAMMO_NPM_INSTALL_DEPENDS}" PARENT_SCOPE)
+endmacro()
+
+# internal: create the staging target and install rule for derammo_npm_install,
+# exporting the parsed COMPONENT and DEPENDS values to the caller
+function(_derammo_npm_install_stage)
+	cmake_parse_arguments(PARSE_ARGV 0 DERAMMO_NPM_INSTALL "" "COMPONENT;DESTINATION;DEPENDS" "NPM_INSTALL_FLAGS")
+	if(NOT DERAMMO_NPM_INSTALL_COMPONENT)
+		message(FATAL_ERROR "derammo_npm_install: COMPONENT is required")
+	endif()
+	if(NOT DERAMMO_NPM_INSTALL_DESTINATION)
+		set(DERAMMO_NPM_INSTALL_DESTINATION "${DERAMMO_INSTALL_LIBDIR}")
+	endif()
+	if(NOT DEFINED DERAMMO_NPM_INSTALL_DEPENDS)
+		set(DERAMMO_NPM_INSTALL_DEPENDS "nodejs (>= 20)")
+	endif()
+	if(NOT DEFINED DERAMMO_NPM_WORKSPACE_TARGET_PREFIX)
+		message(FATAL_ERROR "derammo_npm_install: call derammo_workspaces_auto() first in the same directory")
+	endif()
+
+	set(DERAMMO_NPM_STAGE "${CMAKE_CURRENT_BINARY_DIR}/npm_install")
+
+	# compute the exact tarball names npm pack will produce from each member's
+	# generated package.json: @scope/name -> scope-name-version.tgz
+	set(DERAMMO_NPM_TARBALL_PATHS "")
+	foreach(DERAMMO_NPM_MEMBER_DIR ${DERAMMO_NPM_WORKSPACE_MEMBER_DIRS})
+		file(READ "${DERAMMO_NPM_MEMBER_DIR}/package.json" DERAMMO_NPM_PACKAGE_JSON)
+		string(JSON DERAMMO_NPM_PACKAGE_NAME GET "${DERAMMO_NPM_PACKAGE_JSON}" name)
+		string(JSON DERAMMO_NPM_PACKAGE_VERSION GET "${DERAMMO_NPM_PACKAGE_JSON}" version)
+		string(REPLACE "@" "" DERAMMO_NPM_TARBALL_BASE "${DERAMMO_NPM_PACKAGE_NAME}")
+		string(REPLACE "/" "-" DERAMMO_NPM_TARBALL_BASE "${DERAMMO_NPM_TARBALL_BASE}")
+		list(APPEND DERAMMO_NPM_TARBALL_PATHS "${DERAMMO_NPM_STAGE}/tarballs/${DERAMMO_NPM_TARBALL_BASE}-${DERAMMO_NPM_PACKAGE_VERSION}.tgz")
+	endforeach()
+
+	# minimal manifest for the staging prefix, so npm install works outside any package
+	file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/npm_deploy_package.json"
+		"{\"name\":\"deploy\",\"version\":\"0.0.0\",\"private\":true}\n")
+
+	message(STATUS "staging npm production install from '${CMAKE_CURRENT_SOURCE_DIR}' for component '${DERAMMO_NPM_INSTALL_COMPONENT}'")
+	add_custom_target(${DERAMMO_NPM_WORKSPACE_TARGET_PREFIX}_npm_install ALL
+		WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+		COMMAND ${CMAKE_COMMAND} -E rm -rf "${DERAMMO_NPM_STAGE}"
+		COMMAND ${CMAKE_COMMAND} -E make_directory "${DERAMMO_NPM_STAGE}/tarballs" "${DERAMMO_NPM_STAGE}/deploy"
+		COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_BINARY_DIR}/npm_deploy_package.json" "${DERAMMO_NPM_STAGE}/deploy/package.json"
+		COMMAND npm pack --workspaces --pack-destination "${DERAMMO_NPM_STAGE}/tarballs"
+		COMMAND ${CMAKE_COMMAND} -E chdir "${DERAMMO_NPM_STAGE}/deploy"
+			npm install --omit=dev --no-audit --no-fund ${DERAMMO_NPM_INSTALL_NPM_INSTALL_FLAGS} ${DERAMMO_NPM_TARBALL_PATHS}
+	)
+
+	# stage after the workspace build, so dist/ exists in every member
+	add_dependencies(${DERAMMO_NPM_WORKSPACE_TARGET_PREFIX}_npm_install ${DERAMMO_NPM_WORKSPACE_TARGET_PREFIX}_npm)
+
+	set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_CLEAN_FILES "${DERAMMO_NPM_STAGE}")
+
+	# no trailing slash: the package gets <destination>/node_modules/...
+	install(DIRECTORY "${DERAMMO_NPM_STAGE}/deploy/node_modules"
+		COMPONENT ${DERAMMO_NPM_INSTALL_COMPONENT}
+		DESTINATION ${DERAMMO_NPM_INSTALL_DESTINATION}
+		# keeps execute bits on node_modules/.bin entries
+		USE_SOURCE_PERMISSIONS
+	)
+
+	# export parsed values for the enclosing macro
+	set(DERAMMO_NPM_INSTALL_COMPONENT "${DERAMMO_NPM_INSTALL_COMPONENT}" PARENT_SCOPE)
+	set(DERAMMO_NPM_INSTALL_DEPENDS "${DERAMMO_NPM_INSTALL_DEPENDS}" PARENT_SCOPE)
 endfunction()
