@@ -1,0 +1,11 @@
+{
+  "type": "module",
+  "files": [
+    "dist",
+    "LICENSE.txt",
+    "licenses"
+  ],
+  "scripts": {
+    "clean": "rm -rf ./dist"
+  }
+}

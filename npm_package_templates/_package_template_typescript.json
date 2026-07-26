@@ -1,14 +1,10 @@
 {
-  "type": "module",
-  "files": [
-    "dist",
-    "LICENSE.txt",
-    "licenses"
+  "extends": [
+    "_package_template_base.json"
   ],
   "scripts": {
     "build": "tsc",
     "build:watch": "tsc && tsc --watch",
-    "clean": "rm -rf ./dist",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "lint": "eslint",
     "start": "node dist/index"
