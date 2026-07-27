@@ -74,10 +74,15 @@ function(derammo_workspaces_auto)
 	# visible to all subdirectories added below
 	set(DERAMMO_NPM_WORKSPACE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}")
 
-	file(GLOB DERAMMO_NPM_CANDIDATES RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/*/CMakeLists.txt")
+	file(GLOB_RECURSE DERAMMO_NPM_CANDIDATES RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "CMakeLists.txt")
 	foreach(DERAMMO_NPM_CANDIDATE ${DERAMMO_NPM_CANDIDATES})
-		get_filename_component(DERAMMO_NPM_SUBDIRECTORY "${DERAMMO_NPM_CANDIDATE}" DIRECTORY)
-		add_subdirectory("${DERAMMO_NPM_SUBDIRECTORY}")
+	  if(NOT DERAMMO_NPM_CANDIDATE MATCHES "^CMakeLists.txt$" AND NOT DERAMMO_NPM_CANDIDATE MATCHES "/node_modules/")
+			file(READ "${DERAMMO_NPM_CANDIDATE}" DERAMMO_NPM_CANDIDATE_CONTENT)
+			if(DERAMMO_NPM_CANDIDATE_CONTENT MATCHES "derammo_npm\\(")
+				get_filename_component(DERAMMO_NPM_SUBDIRECTORY "${DERAMMO_NPM_CANDIDATE}" DIRECTORY)
+				add_subdirectory("${DERAMMO_NPM_SUBDIRECTORY}")
+			endif()
+		endif()
 	endforeach()
 
 	# collect the packages that registered from within this workspace

@@ -45,9 +45,9 @@ define DERAMMO_NPM_GUARD
 	fi
 endef
 
-# initialize an npm workspace root in a subfolder of the root
+# initialize an npm workspace root in the root or a subfolder of the root
 # all files are only created if not already present, so this can be run against an existing folder
-workspaces: ../CMakeLists.txt
+workspaces:
 	$(DERAMMO_NPM_GUARD)
 	[ -f CMakeLists.txt ] || cp $(DERAMMO_SETUP_DIR)setup_templates/npm_workspaces_CMakeLists.init CMakeLists.txt
 	[ -f _package_template.json ] || { \
@@ -82,7 +82,8 @@ typescript: ../CMakeLists.txt
 			< $(DERAMMO_SETUP_DIR)setup_templates/npm_typescript_package_template.init \
 			> _package_template.json ; }
 	[ -f tsconfig.json ] || cp $(DERAMMO_SETUP_DIR)setup_templates/npm_tsconfig.init tsconfig.json
-	[ -f eslint.config.js ] || cp $(DERAMMO_SETUP_DIR)setup_templates/npm_eslint_config.init eslint.config.js
+	[ -f ../tsconfig.base.json ] || cp $(DERAMMO_SETUP_DIR)setup_templates/npm_tsconfig_base.init ../tsconfig.base.json
+	[ -f eslint.config.*js ] || cp $(DERAMMO_SETUP_DIR)setup_templates/npm_eslint_config.init eslint.config.js
 	mkdir -p src test
 	[ -f src/index.ts ] || cp $(DERAMMO_SETUP_DIR)setup_templates/npm_index_ts.init src/index.ts
 	[ -f test/index.test.ts ] || cp $(DERAMMO_SETUP_DIR)setup_templates/npm_index_test_ts.init test/index.test.ts

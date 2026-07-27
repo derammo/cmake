@@ -1,7 +1,9 @@
 {
   "scripts": {
-    "test": "jest",
-    "test:watch": "jest --watch"
+    "jest": "jest",
+    "jest:watch": "jest --watch",
+    "test": "npm run jest",
+    "test:watch": "npm run jest:watch"
   },
   "devDependencies": {
     "jest": "^30.2.0",
@@ -19,9 +21,6 @@
       "json",
       "ts"
     ],
-    "@comment disabled moduleNameMapper": {
-      "^@derammo/(.*)$": "<rootDir>/../../base/src/lib/$1"
-    },
     "rootDir": "src",
     "testEnvironment": "node",
     "testRegex": ".*\\.spec\\.ts$",

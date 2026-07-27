@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "allowSyntheticDefaultImports": true,
+    "allowImportingTsExtensions": true,
+    "declaration": true,
+    "emitDecoratorMetadata": true,
+    "esModuleInterop": true,
+    "experimentalDecorators": true,
+    "module": "nodenext",
+    "removeComments": false,
+    "skipLibCheck": true,
+    "sourceMap": true,
+    "strict": true,
+    "lib": ["esnext", "dom"],
+    "resolveJsonModule": true,
+    "rewriteRelativeImportExtensions": true,
+    "incremental": false,
+    "types": ["node"]
+  }
+}
