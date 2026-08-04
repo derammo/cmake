@@ -1,5 +1,5 @@
 {
   "scripts": {
-    "build": "npm run lint && tsc -p . && TARBALL=$(npm pack) && ln -sf \"$TARBALL\" \"${TARBALL%-$npm_package_version.tgz}-current.tgz\""
+    "build": "tsc -p tsconfig.build.json && TARBALL=$(npm pack) && ln -sf \"$TARBALL\" \"${TARBALL%-$npm_package_version.tgz}-current.tgz\""
   }
 }

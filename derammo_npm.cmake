@@ -18,11 +18,23 @@ function(derammo_npm_generate DERAMMO_NPM_WORKSPACES_JSON)
 	list(REMOVE_DUPLICATES DERAMMO_NPM_TEMPLATE_DIRS)
 	string(JOIN ":" DERAMMO_NPM_TEMPLATE_PATH ${DERAMMO_NPM_TEMPLATE_DIRS})
 
-	# rerun cmake when any template that may have contributed changes
+	# rerun cmake when any input that may have contributed changes: the local
+	# template and the generator that expands it
 	set_property(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}" APPEND PROPERTY
-		CMAKE_CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/_package_template.json")
+		CMAKE_CONFIGURE_DEPENDS
+			"${CMAKE_CURRENT_SOURCE_DIR}/_package_template.json"
+			"${DERAMMO_NPM_GENERATOR}")
+
+	# the generated file is a dependency on itself: generation runs at configure
+	# time, so nothing else can notice that package.json is missing, and it stays
+	# missing until some unrelated input happens to trigger a reconfigure
+	set_property(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}" APPEND PROPERTY
+		CMAKE_CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/package.json")
+
+	# CONFIGURE_DEPENDS reruns the glob at build time, so adding a template to a
+	# search path directory triggers a reconfigure, not just editing an existing one
 	foreach(DERAMMO_NPM_TEMPLATE_DIR ${DERAMMO_NPM_TEMPLATE_DIRS})
-		file(GLOB DERAMMO_NPM_TEMPLATES "${DERAMMO_NPM_TEMPLATE_DIR}/_package_template*.json")
+		file(GLOB DERAMMO_NPM_TEMPLATES CONFIGURE_DEPENDS "${DERAMMO_NPM_TEMPLATE_DIR}/_package_template*.json")
 		set_property(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}" APPEND PROPERTY
 			CMAKE_CONFIGURE_DEPENDS ${DERAMMO_NPM_TEMPLATES})
 	endforeach()
@@ -35,6 +47,21 @@ function(derammo_npm_generate DERAMMO_NPM_WORKSPACES_JSON)
 			node "${DERAMMO_NPM_GENERATOR}"
 		WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
 		COMMAND_ERROR_IS_FATAL ANY
+	)
+
+	# on demand regeneration with the same search path cmake computed, so that a
+	# single package can be refreshed without reconfiguring the whole tree; not in
+	# ALL, since configure already generates on every run
+	file(RELATIVE_PATH DERAMMO_RELATIVE_CURRENT_SOURCE_DIR "${CMAKE_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}")
+	string(REPLACE "/" "_" DERAMMO_CURRENT_TARGET_PREFIX "${DERAMMO_RELATIVE_CURRENT_SOURCE_DIR}")
+	add_custom_target(${DERAMMO_CURRENT_TARGET_PREFIX}_package_json
+		COMMAND ${CMAKE_COMMAND} -E env
+			"DERAMMO_NPM_PACKAGE_TEMPLATE_PATH=${DERAMMO_NPM_TEMPLATE_PATH}"
+			"DERAMMO_NPM_WORKSPACES=${DERAMMO_NPM_WORKSPACES_JSON}"
+			node "${DERAMMO_NPM_GENERATOR}"
+		WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+		COMMENT "regenerating package.json in '${CMAKE_CURRENT_SOURCE_DIR}'"
+		VERBATIM
 	)
 endfunction()
 

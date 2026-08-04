@@ -82,13 +82,13 @@ typescript: ../CMakeLists.txt
 			< $(DERAMMO_SETUP_DIR)setup_templates/npm_typescript_package_template.init \
 			> _package_template.json ; }
 	[ -f tsconfig.json ] || cp $(DERAMMO_SETUP_DIR)setup_templates/npm_tsconfig.init tsconfig.json
-	[ -f tsconfig.test.json ] || cp $(DERAMMO_SETUP_DIR)setup_templates/npm_tsconfig_test.init tsconfig.test.json
-	[ -f vitest.config.json ] || cp $(DERAMMO_SETUP_DIR)setup_templates/npm_vitest_config.init vitest.config.json
+	[ -f tsconfig.build.json ] || cp $(DERAMMO_SETUP_DIR)setup_templates/npm_tsconfig_build.init tsconfig.build.json
+	[ -f vitest.config.ts ] || cp $(DERAMMO_SETUP_DIR)setup_templates/npm_vitest_config.init vitest.config.ts
 	[ -f ../tsconfig.base.json ] || cp $(DERAMMO_SETUP_DIR)setup_templates/npm_tsconfig_base.init ../tsconfig.base.json
 	[ -f eslint.config.*js ] || cp $(DERAMMO_SETUP_DIR)setup_templates/npm_eslint_config.init eslint.config.mjs
-	mkdir -p src test
-	[ -f src/index.ts ] || cp $(DERAMMO_SETUP_DIR)setup_templates/npm_index_ts.init src/index.ts
-	[ -f test/index.test.ts ] || cp $(DERAMMO_SETUP_DIR)setup_templates/npm_index_test_ts.init test/index.test.ts
+	mkdir -p test
+	# install dummy files only in a new project
+	[ -d src ] || ( mkdir src && cp $(DERAMMO_SETUP_DIR)setup_templates/npm_index_ts.init src/index.ts && cp $(DERAMMO_SETUP_DIR)setup_templates/npm_index_test_ts.init test/index.test.ts )
 
 # initialize an npm package without anything special in a subfolder of a workspace root
 # all files are only created if not already present, so this can be run against an existing package

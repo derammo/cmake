@@ -1,9 +1,11 @@
 {
   "extends": "../tsconfig.base.json",
   "compilerOptions": {
+    "noEmit": true,
     "outDir": "dist",
-    "rootDir": "src"
+    "rootDir": "src",
+    "types": ["vitest/globals", "node"]
   },
   "include": ["src/**/*"],
-  "exclude": ["src/**/*.test.ts", "test/**/*.ts"]
+  "exclude": ["test/fixtures/**/*.ts"]
 }

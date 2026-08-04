@@ -3,9 +3,9 @@
     "_package_template_base.json"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc -p tsconfig.build.json",
     "check": "tsc --noEmit",
-    "build:watch": "tsc && tsc --watch",
+    "build:watch": "tsc -p tsconfig.build.json && tsc -p tsconfig.build.json --watch",
     "check:watch": "tsc --noEmit && tsc --watch --noEmit",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "lint": "eslint",
@@ -24,6 +24,7 @@
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.50.1",
-    "@types/node": "^24.0.0"
+    "@types/node": "^24.0.0",
+    "brace-expansion": ">5.0.8"
   }
 }
