@@ -6,6 +6,6 @@
     "licenses"
   ],
   "scripts": {
-    "clean": "rm -rf ./dist tsconfig.tsbuildinfo"
+    "clean": "rm -rf ./dist tsconfig.tsbuildinfo tsconfig.build.tsbuildinfo"
   }
 }
