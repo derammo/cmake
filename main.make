@@ -22,7 +22,14 @@ squeaky: clean $(DERAMMO_SQUEAKY_TARGETS)
 	rm -rf $(DERAMMO_PLATFORM)
 	rm -rf Windows
 	rm -rf node_modules cmake/scripts/node_modules
-	
+
+configure: $(DERAMMO_PLATFORM)/Release \
+	$(DERAMMO_PLATFORM)/Release/Makefile \
+	$(DERAMMO_PLATFORM)/Debug \
+	$(DERAMMO_PLATFORM)/Debug/Makefile \
+	$(DERAMMO_PLATFORM)/RelWithDebInfo \
+	$(DERAMMO_PLATFORM)/RelWithDebInfo/Makefile
+
 release: $(DERAMMO_PLATFORM)/Release $(DERAMMO_PLATFORM)/Release/Makefile
 	cd $< && make
 
