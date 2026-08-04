@@ -5,5 +5,11 @@
 	"name": "REPLACE_SCOPE/REPLACE_PROJECT_NAME",
 	"private": true,
 	"description": "",
-	"license": "UNLICENSED"
+	"license": "UNLICENSED",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		}
+	}
 }
