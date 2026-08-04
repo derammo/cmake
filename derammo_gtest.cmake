@@ -14,7 +14,7 @@ endif()
 FetchContent_MakeAvailable(googletest)
 include(GoogleTest)
 
-# helper to glob all the test ources in gtest directories
+# helper to glob all the test sources in gtest directories
 function(derammo_scan_gtest_sources DERAMMO_TARGET DERAMMO_LIBRARY_TYPE)
     file(GLOB_RECURSE DERAMMO_GTEST_SOURCES
         LIST_DIRECTORIES false
@@ -46,6 +46,9 @@ function(derammo_add_gtest_target DERAMMO_TARGET)
     gtest_discover_tests(${DERAMMO_GTEST_TARGET}
         WORKING_DIRECTORY ${DERAMMO_RUNTIME_DIR}
         TEST_PREFIX ${DERAMMO_TARGET}_)
+
+    # using up to C++20 for testing
+    target_compile_features(${DERAMMO_GTEST_TARGET} PRIVATE cxx_std_20)
 endfunction()
 
 # helper for projects that just want to add all gtest sources, regardless of whether they use fixed sources for production code
