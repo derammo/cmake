@@ -4,7 +4,9 @@
   ],
   "scripts": {
     "build": "tsc",
+    "check": "tsc --noEmit",
     "build:watch": "tsc && tsc --watch",
+    "check:watch": "tsc --noEmit && tsc --watch --noEmit",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "lint": "eslint",
     "start": "node dist/index"
