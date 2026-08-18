@@ -7,7 +7,7 @@
     "check": "tsc --noEmit",
     "build:watch": "tsc -p tsconfig.build.json && tsc -p tsconfig.build.json --watch",
     "check:watch": "tsc --noEmit && tsc --watch --noEmit",
-    "format": "prettier --print-width 120 --write \"src/**/*.ts\" \"test/**/*.ts\"",
+    "format": "prettier --print-width 120 --no-error-on-unmatched-pattern --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "lint": "eslint",
     "start": "node dist/index"
   },
