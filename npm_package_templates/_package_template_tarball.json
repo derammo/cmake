@@ -1,5 +1,8 @@
 {
+  "extends": [
+    "_package_template_typescript.json"
+  ],
   "scripts": {
-    "build": "echo \"       building $npm_package_name ...\" && tsc -p tsconfig.build.json && TARBALL=$(npm pack --quiet) && ln -sf \"$TARBALL\" \"${TARBALL%-$npm_package_version.tgz}-current.tgz\""
+    "build": "echo \"       building $npm_package_name ...\" && tsc-absolute -p tsconfig.build.json && TARBALL=$(npm pack --quiet) && ln -sf \"$TARBALL\" \"${TARBALL%-$npm_package_version.tgz}-current.tgz\""
   }
 }
