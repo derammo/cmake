@@ -3,7 +3,7 @@
     "_package_template_base.json"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "echo \"       building $npm_package_name ...\" && tsc -p tsconfig.build.json",
     "check": "tsc --noEmit",
     "build:watch": "tsc -p tsconfig.build.json && tsc -p tsconfig.build.json --watch",
     "check:watch": "tsc --noEmit && tsc --watch --noEmit",
