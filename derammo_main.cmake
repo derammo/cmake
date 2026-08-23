@@ -28,8 +28,11 @@ if(MSVC)
     set(CMAKE_SUPPRESS_REGENERATION true)
 endif()
 
-# enable ctest integration
+# enable ctest integration; every test provider (gtest, npm, maven, ...)
+# registers its tests here with a LABELS property naming the provider, so the
+# generated `test` target runs all of them and `ctest -L <provider>` runs one
 enable_testing()
+set(CMAKE_CTEST_ARGUMENTS --output-on-failure)
 
 # standard defines
 add_compile_definitions(

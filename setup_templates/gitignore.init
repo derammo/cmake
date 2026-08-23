@@ -1,6 +1,4 @@
-Linux
-Windows
-Darwin
-build
-CMakeFiles
+/Linux
+/Windows
+/Darwin
 .*.swp

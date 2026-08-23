@@ -7,7 +7,7 @@ DERAMMO_PLATFORM := $(strip $(shell uname -s))
 DERAMMO_CMAKE_LISTS := $(shell find . -name "CMakeLists.txt") cmake/main.make
 DERAMMO_CMAKE_SOURCES := $(wildcard cmake/derammo*.cmake)
 
-.PHONY: all clean squeaky release package docker relWithDebInfo debug probe info test gtest mtest trace
+.PHONY: all clean squeaky configure release package docker relWithDebInfo debug probe info test trace
 all: release $(DERAMMO_ALL_TARGETS)
 
 clean: 
@@ -53,13 +53,15 @@ info:
 	@echo $(DERAMMO_CMAKE_LISTS)
 	@echo $(DERAMMO_CMAKE_SOURCES)
 
-# REVISIT: also execute other supported test types
-test: gtest mtest
-gtest: debug
-	if [ -d $(DERAMMO_PLATFORM)/Debug ] ; then cd $(DERAMMO_PLATFORM)/Debug && ctest --output-on-failure ; fi
-mtest: debug 
-	# run maven tests
-	if [ -f pom.xml ] ; then mvn test ; fi
+# every test provider registers with ctest under a label naming the provider
+# (gtest, npm, vitest, jest, maven, ...), so this runs all of them
+test: debug
+	cd $(DERAMMO_PLATFORM)/Debug && ctest --output-on-failure
+
+# run only the tests of one provider, e.g. `make test-npm`; `ctest --print-labels`
+# in the build directory lists what is registered
+test-%: debug
+	cd $(DERAMMO_PLATFORM)/Debug && ctest --output-on-failure -L $*
 
 # XXX: testRelease
 

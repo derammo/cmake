@@ -45,7 +45,8 @@ function(derammo_add_gtest_target DERAMMO_TARGET)
     file(MAKE_DIRECTORY ${DERAMMO_RUNTIME_DIR})
     gtest_discover_tests(${DERAMMO_GTEST_TARGET}
         WORKING_DIRECTORY ${DERAMMO_RUNTIME_DIR}
-        TEST_PREFIX ${DERAMMO_TARGET}_)
+        TEST_PREFIX ${DERAMMO_TARGET}_
+        PROPERTIES LABELS gtest)
 
     # using up to C++20 for testing
     target_compile_features(${DERAMMO_GTEST_TARGET} PRIVATE cxx_std_20)

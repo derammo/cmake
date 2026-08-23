@@ -30,9 +30,8 @@ then edit the top level CMakeLists.txt to add your project name, vendor, and con
 | `configure`      | configure all build types, without building, to be used for development of cmake files                                 |
 | `package`        | build Release, then run CPack (`make package`) in the Release build dir                                                |
 | `docker`         | build Release, then run the `docker` custom target if the project defines one (non-fatal if missing)                   |
-| `test`           | build Debug, then run `gtest` and `mtest` (see below)                                                                  |
-| `gtest`          | build Debug, then `ctest --output-on-failure` in the Debug build dir                                                   |
-| `mtest`          | build Debug, then `mvn test` if the project has a `pom.xml` (no-op otherwise)                                          |
+| `test`           | build Debug, then run every registered test through `ctest --output-on-failure` (gtest, npm, maven, ... see below)         |
+| `test-<label>`   | like `test`, restricted to one provider label, e.g. `make test-npm`, `make test-jest`                                   |
 | `clean`          | run `make clean` inside any existing `<Platform>/{Release,RelWithDebInfo,Debug}` build dir (keeps the dirs themselves) |
 | `squeaky`        | delete `<Platform>/` and `Windows/` entirely, removing all build artifacts                                             |
 | `info`           | print the detected platform and the inputs main.make watches for regeneration                                          |
@@ -60,6 +59,16 @@ Windows does not use `make` — the equivalents live in the `cmake\` submodule a
 | `cmake\test.cmd` | `make test`             | run `ctest --output-on-failure` inside the `Windows\` build tree       |
 
 In particular, **there is no `make test` on Windows** — use `cmake\test.cmd` instead.
+
+## test providers
+
+All testing goes through CTest. Each kind of test support registers the tests it finds with `add_test()` and labels them with the provider name, so the generated `test` target (and `make test` / `cmake\test.cmd`) runs everything, and `ctest -L <label>` or `make test-<label>` runs one kind. `ctest --print-labels` in a build directory lists what a project registered.
+
+| provider file          | registers                                                                             | labels                                   |
+| ---------------------- | ------------------------------------------------------------------------------------- | ---------------------------------------- |
+| `derammo_gtest.cmake`  | one test per Google Test case, discovered from each `gtest/` target                   | `gtest`                                  |
+| `derammo_npm.cmake`    | `npm run test` per package: standalone packages register themselves, a workspace root registers one test per member | `npm`, plus the framework found in `devDependencies` (`vitest`, `jest`, `mocha`) |
+| `derammo_maven.cmake`  | `mvn test` for each `derammo_maven_build()`                                           | `maven`                                  |
 
 ## generating targets for subdirectories
 

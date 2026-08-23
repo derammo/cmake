@@ -65,6 +65,22 @@ function(derammo_npm_generate DERAMMO_NPM_WORKSPACES_JSON)
 	)
 endfunction()
 
+# internal: compute the ctest labels for the package in DERAMMO_NPM_PACKAGE_DIR:
+# "npm" for the provider, plus the name of each known test framework found in
+# the generated package.json's devDependencies
+function(derammo_npm_test_labels DERAMMO_NPM_PACKAGE_DIR DERAMMO_NPM_LABELS_OUT)
+	set(DERAMMO_NPM_LABELS npm)
+	file(READ "${DERAMMO_NPM_PACKAGE_DIR}/package.json" DERAMMO_NPM_PACKAGE_JSON)
+	foreach(DERAMMO_NPM_FRAMEWORK vitest jest mocha)
+		string(JSON DERAMMO_NPM_FRAMEWORK_VERSION ERROR_VARIABLE DERAMMO_NPM_JSON_ERROR
+			GET "${DERAMMO_NPM_PACKAGE_JSON}" devDependencies ${DERAMMO_NPM_FRAMEWORK})
+		if(NOT DERAMMO_NPM_JSON_ERROR)
+			list(APPEND DERAMMO_NPM_LABELS ${DERAMMO_NPM_FRAMEWORK})
+		endif()
+	endforeach()
+	set(${DERAMMO_NPM_LABELS_OUT} "${DERAMMO_NPM_LABELS}" PARENT_SCOPE)
+endfunction()
+
 # declare an npm package in the current source directory, generating its
 # package.json from _package_template.json at configure time; inside a workspace
 # the workspace root builds and tests all packages, so a standalone package
@@ -90,6 +106,8 @@ function(derammo_npm)
 			COMMAND npm run test --if-present
 			WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 		)
+		derammo_npm_test_labels("${CMAKE_CURRENT_SOURCE_DIR}" DERAMMO_NPM_LABELS)
+		set_tests_properties(${DERAMMO_CURRENT_TARGET_PREFIX}_npm PROPERTIES LABELS "${DERAMMO_NPM_LABELS}")
 	endif()
 endfunction()
 
@@ -136,10 +154,17 @@ function(derammo_workspaces_auto)
 		COMMAND npm install
 		COMMAND npm run build --workspaces --if-present
 	)
-	add_test(NAME ${DERAMMO_CURRENT_TARGET_PREFIX}_npm
-		COMMAND npm run test --workspaces --if-present
-		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-	)
+	# one test per member, run from the root so hoisted dependencies resolve
+	foreach(DERAMMO_NPM_MEMBER_DIR ${DERAMMO_NPM_MEMBER_DIRS})
+		file(RELATIVE_PATH DERAMMO_NPM_MEMBER_RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "${DERAMMO_NPM_MEMBER_DIR}")
+		string(REPLACE "/" "_" DERAMMO_NPM_MEMBER_TEST "${DERAMMO_CURRENT_TARGET_PREFIX}_${DERAMMO_NPM_MEMBER_RELATIVE}")
+		add_test(NAME ${DERAMMO_NPM_MEMBER_TEST}
+			COMMAND npm run test --workspace "${DERAMMO_NPM_MEMBER_RELATIVE}" --if-present
+			WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+		)
+		derammo_npm_test_labels("${DERAMMO_NPM_MEMBER_DIR}" DERAMMO_NPM_LABELS)
+		set_tests_properties(${DERAMMO_NPM_MEMBER_TEST} PROPERTIES LABELS "${DERAMMO_NPM_LABELS}")
+	endforeach()
 
 	# export state for a subsequent derammo_npm_install() call from the same directory
 	set(DERAMMO_NPM_WORKSPACE_TARGET_PREFIX "${DERAMMO_CURRENT_TARGET_PREFIX}" PARENT_SCOPE)
