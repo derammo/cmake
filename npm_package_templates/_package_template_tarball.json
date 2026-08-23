@@ -1,5 +1,5 @@
 {
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && TARBALL=$(npm pack) && ln -sf \"$TARBALL\" \"${TARBALL%-$npm_package_version.tgz}-current.tgz\""
+    "build": "tsc -p tsconfig.build.json && TARBALL=$(npm pack --quiet) && ln -sf \"$TARBALL\" \"${TARBALL%-$npm_package_version.tgz}-current.tgz\""
   }
 }

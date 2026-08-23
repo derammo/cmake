@@ -11,7 +11,8 @@ function(derammo_maven_build)
 		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 
 		# build all jars and collect third party ones
-		COMMAND JAVA_HOME=${JDK} mvn 
+		COMMAND JAVA_HOME=${JDK} mvn
+			-Dorg.slf4j.simpleLogger.defaultLogLevel=WARN 
 			-DskipTests
 			install 
 			dependency:copy-dependencies 

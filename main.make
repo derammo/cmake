@@ -2,6 +2,11 @@
 #
 # to be included from the root level Makefile of a project (automatically done if cmake/setup.make is used to initialize the root)
 
+# the generated build system is several levels of sub-make in one directory,
+# which would otherwise announce that directory on every entry and exit;
+# MAKEFLAGS is inherited by every sub-make, so this silences all of them
+MAKEFLAGS += --no-print-directory
+
 # inventory
 DERAMMO_PLATFORM := $(strip $(shell uname -s))
 DERAMMO_CMAKE_LISTS := $(shell find . -name "CMakeLists.txt") cmake/main.make

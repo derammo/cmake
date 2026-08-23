@@ -3,6 +3,9 @@ include_guard()
 # template expansion script, run directly by node without compilation
 set(DERAMMO_NPM_GENERATOR "${CMAKE_SOURCE_DIR}/cmake/scripts/generate_npm_package_json.ts")
 
+# `npm install` with the lines that only say nothing happened filtered out
+set(DERAMMO_NPM_INSTALL ${CMAKE_COMMAND} -P "${CMAKE_SOURCE_DIR}/cmake/scripts/npm_install.cmake")
+
 # internal: expand _package_template.json into package.json in the current source
 # directory; DERAMMO_NPM_WORKSPACES_JSON is a JSON array of workspace folders when
 # generating for a workspace root, or empty
@@ -122,11 +125,12 @@ function(derammo_npm)
 		string(REPLACE "/" "_" DERAMMO_CURRENT_TARGET_PREFIX "${DERAMMO_RELATIVE_CURRENT_SOURCE_DIR}")
 		add_custom_target(${DERAMMO_CURRENT_TARGET_PREFIX}_npm ALL
 			WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-			COMMAND npm install
-			COMMAND npm run build --if-present
+			COMMAND ${DERAMMO_NPM_INSTALL}
+			COMMAND npm run build --if-present --silent
+			COMMENT "building npm package in '${CMAKE_CURRENT_SOURCE_DIR}'"
 		)
 		add_test(NAME ${DERAMMO_CURRENT_TARGET_PREFIX}_npm
-			COMMAND npm run test --if-present
+			COMMAND npm run test --if-present --silent
 			WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 		)
 		derammo_npm_test_properties(${DERAMMO_CURRENT_TARGET_PREFIX}_npm "${CMAKE_CURRENT_SOURCE_DIR}")
@@ -173,15 +177,16 @@ function(derammo_workspaces_auto)
 	string(REPLACE "/" "_" DERAMMO_CURRENT_TARGET_PREFIX "${DERAMMO_RELATIVE_CURRENT_SOURCE_DIR}")
 	add_custom_target(${DERAMMO_CURRENT_TARGET_PREFIX}_npm ALL
 		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-		COMMAND npm install
-		COMMAND npm run build --workspaces --if-present
+		COMMAND ${DERAMMO_NPM_INSTALL}
+		COMMAND npm run build --workspaces --if-present --silent
+		COMMENT "building npm workspace in '${CMAKE_CURRENT_SOURCE_DIR}'"
 	)
 	# one test per member, run from the root so hoisted dependencies resolve
 	foreach(DERAMMO_NPM_MEMBER_DIR ${DERAMMO_NPM_MEMBER_DIRS})
 		file(RELATIVE_PATH DERAMMO_NPM_MEMBER_RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "${DERAMMO_NPM_MEMBER_DIR}")
 		string(REPLACE "/" "_" DERAMMO_NPM_MEMBER_TEST "${DERAMMO_CURRENT_TARGET_PREFIX}_${DERAMMO_NPM_MEMBER_RELATIVE}")
 		add_test(NAME ${DERAMMO_NPM_MEMBER_TEST}
-			COMMAND npm run test --workspace "${DERAMMO_NPM_MEMBER_RELATIVE}" --if-present
+			COMMAND npm run test --workspace "${DERAMMO_NPM_MEMBER_RELATIVE}" --if-present --silent
 			WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 		)
 		derammo_npm_test_properties(${DERAMMO_NPM_MEMBER_TEST} "${DERAMMO_NPM_MEMBER_DIR}")
