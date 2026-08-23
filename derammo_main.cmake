@@ -32,7 +32,22 @@ endif()
 # registers its tests here with a LABELS property naming the provider, so the
 # generated `test` target runs all of them and `ctest -L <provider>` runs one
 enable_testing()
-set(CMAKE_CTEST_ARGUMENTS --output-on-failure)
+
+# every provider also writes JUnit XML for each test it registers into this
+# directory, and ctest writes the summary of the whole run there; main.make
+# passes the same path to ctest
+set(DERAMMO_JUNIT_DIR "${CMAKE_BINARY_DIR}/junit")
+file(MAKE_DIRECTORY "${DERAMMO_JUNIT_DIR}")
+set(CMAKE_CTEST_ARGUMENTS --output-on-failure --output-junit "${DERAMMO_JUNIT_DIR}/ctest.xml")
+
+# helper for providers whose runners honor the NO_COLOR convention: plain
+# output for the captured log and the JUnit XML path for this test
+function(derammo_test_output DERAMMO_TEST_NAME)
+	set_property(TEST ${DERAMMO_TEST_NAME} APPEND PROPERTY ENVIRONMENT
+		"NO_COLOR=1"
+		"DERAMMO_JUNIT_FILE=${DERAMMO_JUNIT_DIR}/${DERAMMO_TEST_NAME}.xml"
+	)
+endfunction()
 
 # standard defines
 add_compile_definitions(

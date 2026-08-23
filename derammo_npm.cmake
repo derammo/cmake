@@ -81,6 +81,29 @@ function(derammo_npm_test_labels DERAMMO_NPM_PACKAGE_DIR DERAMMO_NPM_LABELS_OUT)
 	set(${DERAMMO_NPM_LABELS_OUT} "${DERAMMO_NPM_LABELS}" PARENT_SCOPE)
 endfunction()
 
+# internal: label the registered ctest entry DERAMMO_NPM_TEST for the package
+# in DERAMMO_NPM_PACKAGE_DIR and configure its output: no color, and JUnit XML
+# in DERAMMO_JUNIT_DIR via whatever mechanism the package's test framework
+# offers; vitest reads DERAMMO_JUNIT_FILE in the generated vitest.config.ts,
+# jest-junit reads its own variable, and a package without any known framework
+# is assumed to use `node --test`, which takes reporters from NODE_OPTIONS
+function(derammo_npm_test_properties DERAMMO_NPM_TEST DERAMMO_NPM_PACKAGE_DIR)
+	derammo_npm_test_labels("${DERAMMO_NPM_PACKAGE_DIR}" DERAMMO_NPM_LABELS)
+	set_tests_properties(${DERAMMO_NPM_TEST} PROPERTIES LABELS "${DERAMMO_NPM_LABELS}")
+	derammo_test_output(${DERAMMO_NPM_TEST})
+
+	set(DERAMMO_NPM_JUNIT_FILE "${DERAMMO_JUNIT_DIR}/${DERAMMO_NPM_TEST}.xml")
+	if("jest" IN_LIST DERAMMO_NPM_LABELS)
+		set_property(TEST ${DERAMMO_NPM_TEST} APPEND PROPERTY ENVIRONMENT
+			"JEST_JUNIT_OUTPUT_FILE=${DERAMMO_NPM_JUNIT_FILE}")
+	endif()
+	list(LENGTH DERAMMO_NPM_LABELS DERAMMO_NPM_LABEL_COUNT)
+	if(DERAMMO_NPM_LABEL_COUNT EQUAL 1)
+		set_property(TEST ${DERAMMO_NPM_TEST} APPEND PROPERTY ENVIRONMENT
+			"NODE_OPTIONS=--test-reporter=spec --test-reporter-destination=stdout --test-reporter=junit --test-reporter-destination=${DERAMMO_NPM_JUNIT_FILE}")
+	endif()
+endfunction()
+
 # declare an npm package in the current source directory, generating its
 # package.json from _package_template.json at configure time; inside a workspace
 # the workspace root builds and tests all packages, so a standalone package
@@ -106,8 +129,7 @@ function(derammo_npm)
 			COMMAND npm run test --if-present
 			WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 		)
-		derammo_npm_test_labels("${CMAKE_CURRENT_SOURCE_DIR}" DERAMMO_NPM_LABELS)
-		set_tests_properties(${DERAMMO_CURRENT_TARGET_PREFIX}_npm PROPERTIES LABELS "${DERAMMO_NPM_LABELS}")
+		derammo_npm_test_properties(${DERAMMO_CURRENT_TARGET_PREFIX}_npm "${CMAKE_CURRENT_SOURCE_DIR}")
 	endif()
 endfunction()
 
@@ -162,8 +184,7 @@ function(derammo_workspaces_auto)
 			COMMAND npm run test --workspace "${DERAMMO_NPM_MEMBER_RELATIVE}" --if-present
 			WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 		)
-		derammo_npm_test_labels("${DERAMMO_NPM_MEMBER_DIR}" DERAMMO_NPM_LABELS)
-		set_tests_properties(${DERAMMO_NPM_MEMBER_TEST} PROPERTIES LABELS "${DERAMMO_NPM_LABELS}")
+		derammo_npm_test_properties(${DERAMMO_NPM_MEMBER_TEST} "${DERAMMO_NPM_MEMBER_DIR}")
 	endforeach()
 
 	# export state for a subsequent derammo_npm_install() call from the same directory

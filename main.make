@@ -54,14 +54,16 @@ info:
 	@echo $(DERAMMO_CMAKE_SOURCES)
 
 # every test provider registers with ctest under a label naming the provider
-# (gtest, npm, vitest, jest, maven, ...), so this runs all of them
+# (gtest, npm, vitest, jest, maven, ...), so this runs all of them; JUnit XML
+# for each test and for the run as a whole lands in the junit folder of the
+# build directory, matching CMAKE_CTEST_ARGUMENTS in derammo_main.cmake
 test: debug
-	cd $(DERAMMO_PLATFORM)/Debug && ctest --output-on-failure
+	cd $(DERAMMO_PLATFORM)/Debug && ctest --output-on-failure --output-junit junit/ctest.xml
 
 # run only the tests of one provider, e.g. `make test-npm`; `ctest --print-labels`
 # in the build directory lists what is registered
 test-%: debug
-	cd $(DERAMMO_PLATFORM)/Debug && ctest --output-on-failure -L $*
+	cd $(DERAMMO_PLATFORM)/Debug && ctest --output-on-failure --output-junit junit/ctest.xml -L $*
 
 # XXX: testRelease
 

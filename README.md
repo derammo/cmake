@@ -70,6 +70,17 @@ All testing goes through CTest. Each kind of test support registers the tests it
 | `derammo_npm.cmake`    | `npm run test` per package: standalone packages register themselves, a workspace root registers one test per member | `npm`, plus the framework found in `devDependencies` (`vitest`, `jest`, `mocha`) |
 | `derammo_maven.cmake`  | `mvn test` for each `derammo_maven_build()`                                           | `maven`                                  |
 
+Test output is kept plain for the captured log (no color: `--gtest_color=no`, `NO_COLOR=1` in the environment of npm tests, `mvn --batch-mode`), and every provider also writes JUnit XML into `<Platform>/<Config>/junit/`:
+
+| provider | JUnit XML                                                                                                                                                                  |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ctest    | `junit/ctest.xml`, the whole run                                                                                                                                           |
+| gtest    | `junit/<test>.xml`, one file per test case                                                                                                                                 |
+| npm      | `junit/<test>.xml`: the test's environment carries `DERAMMO_JUNIT_FILE`, which the generated `vitest.config.ts` turns into a `junit` reporter; jest packages get `JEST_JUNIT_OUTPUT_FILE` for the `jest-junit` reporter in the template; a package with no known framework is assumed to use `node --test` and gets the `junit` reporter through `NODE_OPTIONS` |
+| maven    | wherever the pom's surefire `reportsDirectory` points; surefire has no command line override for it, so point it at `@CMAKE_BINARY_DIR@/junit/...` from `pom.xml.in`          |
+
+The per-test XML comes from properties of the tests themselves, so any ctest invocation produces it; only `junit/ctest.xml` depends on the `--output-junit` argument, which `make test`, the generated `test` target, and the Visual Studio `RUN_TESTS` target pass (`CMAKE_CTEST_ARGUMENTS`), and `cmake\test.cmd` does not.
+
 ## generating targets for subdirectories
 
 To initialize a suitable config for a library/executable/etc, there are make targets to initialize cmake. For example, if you have a subdirectory "foo" that should be built as a library, you can

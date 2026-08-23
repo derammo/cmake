@@ -24,9 +24,11 @@ function(derammo_maven_build)
 		BYPRODUCTS ${CMAKE_BINARY_DIR}/${DERAMMO_JAVABUILD_OUTPUT}
 	)
 
-	# register with ctest as the maven test provider
+	# register with ctest as the maven test provider; batch mode disables color
+	# in the captured output, and surefire writes JUnit XML on its own, to the
+	# reportsDirectory configured in the pom
 	add_test(NAME ${DERAMMO_CURRENT_TARGET_PREFIX}_maven
-		COMMAND ${CMAKE_COMMAND} -E env JAVA_HOME=${JDK} mvn test
+		COMMAND ${CMAKE_COMMAND} -E env JAVA_HOME=${JDK} mvn --batch-mode test
 		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 	)
 	set_tests_properties(${DERAMMO_CURRENT_TARGET_PREFIX}_maven PROPERTIES LABELS maven)

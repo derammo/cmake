@@ -43,9 +43,13 @@ function(derammo_add_gtest_target DERAMMO_TARGET)
     target_sources(${DERAMMO_GTEST_TARGET} PRIVATE ${DERAMMO_GTEST_SOURCES})
     target_link_libraries(${DERAMMO_GTEST_TARGET} ${DERAMMO_TARGET} gtest_main)
     file(MAKE_DIRECTORY ${DERAMMO_RUNTIME_DIR})
+    # XML_OUTPUT_DIR writes one JUnit file per test case, named like the ctest
+    # entry, so parallel test runs do not race on a shared output file
     gtest_discover_tests(${DERAMMO_GTEST_TARGET}
         WORKING_DIRECTORY ${DERAMMO_RUNTIME_DIR}
         TEST_PREFIX ${DERAMMO_TARGET}_
+        EXTRA_ARGS --gtest_color=no
+        XML_OUTPUT_DIR ${DERAMMO_JUNIT_DIR}
         PROPERTIES LABELS gtest)
 
     # using up to C++20 for testing
