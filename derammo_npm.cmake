@@ -6,6 +6,20 @@ set(DERAMMO_NPM_GENERATOR "${CMAKE_SOURCE_DIR}/cmake/scripts/generate_npm_packag
 # `npm install` with the lines that only say nothing happened filtered out
 set(DERAMMO_NPM_INSTALL ${CMAKE_COMMAND} -P "${CMAKE_SOURCE_DIR}/cmake/scripts/npm_install.cmake")
 
+# internal: set DERAMMO_CURRENT_TARGET_PREFIX in the caller's scope to the
+# current source directory's path relative to the source root, with slashes
+# replaced by underscores so it is usable as a target name prefix; the source
+# root itself gets the prefix "root"
+function(derammo_calculate_current_target_prefix)
+	file(RELATIVE_PATH DERAMMO_RELATIVE_CURRENT_SOURCE_DIR "${CMAKE_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}")
+	if(DERAMMO_RELATIVE_CURRENT_SOURCE_DIR STREQUAL "")
+		set(DERAMMO_CURRENT_TARGET_PREFIX "root")
+	else()
+		string(REPLACE "/" "_" DERAMMO_CURRENT_TARGET_PREFIX "${DERAMMO_RELATIVE_CURRENT_SOURCE_DIR}")
+	endif()
+	set(DERAMMO_CURRENT_TARGET_PREFIX "${DERAMMO_CURRENT_TARGET_PREFIX}" PARENT_SCOPE)
+endfunction()
+
 # internal: expand _package_template.json into package.json in the current source
 # directory; DERAMMO_NPM_WORKSPACES_JSON is a JSON array of workspace folders when
 # generating for a workspace root, or empty
@@ -55,8 +69,7 @@ function(derammo_npm_generate DERAMMO_NPM_WORKSPACES_JSON)
 	# on demand regeneration with the same search path cmake computed, so that a
 	# single package can be refreshed without reconfiguring the whole tree; not in
 	# ALL, since configure already generates on every run
-	file(RELATIVE_PATH DERAMMO_RELATIVE_CURRENT_SOURCE_DIR "${CMAKE_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}")
-	string(REPLACE "/" "_" DERAMMO_CURRENT_TARGET_PREFIX "${DERAMMO_RELATIVE_CURRENT_SOURCE_DIR}")
+	derammo_calculate_current_target_prefix()
 	add_custom_target(${DERAMMO_CURRENT_TARGET_PREFIX}_package_json
 		COMMAND ${CMAKE_COMMAND} -E env
 			"DERAMMO_NPM_PACKAGE_TEMPLATE_PATH=${DERAMMO_NPM_TEMPLATE_PATH}"
@@ -121,8 +134,7 @@ function(derammo_npm)
 	set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_CLEAN_FILES "${CMAKE_CURRENT_SOURCE_DIR}/node_modules")
 
 	if(NOT DEFINED DERAMMO_NPM_WORKSPACE_ROOT)
-		file(RELATIVE_PATH DERAMMO_RELATIVE_CURRENT_SOURCE_DIR "${CMAKE_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}")
-		string(REPLACE "/" "_" DERAMMO_CURRENT_TARGET_PREFIX "${DERAMMO_RELATIVE_CURRENT_SOURCE_DIR}")
+		derammo_calculate_current_target_prefix()
 		add_custom_target(${DERAMMO_CURRENT_TARGET_PREFIX}_npm ALL
 			WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 			COMMAND ${DERAMMO_NPM_INSTALL}
@@ -173,8 +185,7 @@ function(derammo_workspaces_auto)
 	# the clean target removes our npm installation
 	set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_CLEAN_FILES "${CMAKE_CURRENT_SOURCE_DIR}/node_modules")
 
-	file(RELATIVE_PATH DERAMMO_RELATIVE_CURRENT_SOURCE_DIR "${CMAKE_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}")
-	string(REPLACE "/" "_" DERAMMO_CURRENT_TARGET_PREFIX "${DERAMMO_RELATIVE_CURRENT_SOURCE_DIR}")
+	derammo_calculate_current_target_prefix()
 	add_custom_target(${DERAMMO_CURRENT_TARGET_PREFIX}_npm ALL
 		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 		COMMAND ${DERAMMO_NPM_INSTALL}
