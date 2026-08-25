@@ -15,7 +15,7 @@
     "lib": ["esnext", "dom"],
     "resolveJsonModule": true,
     "rewriteRelativeImportExtensions": true,
-    "incremental": false,
+    "incremental": true,
     "types": ["node"]
   }
 }

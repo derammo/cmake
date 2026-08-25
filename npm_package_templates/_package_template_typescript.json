@@ -3,7 +3,7 @@
     "_package_template_base.json"
   ],
   "scripts": {
-    "build": "echo \"       building $npm_package_name ...\" && tsc-absolute -p tsconfig.build.json",
+    "build": "tsc-absolute -p tsconfig.build.json",
     "check": "tsc-absolute --noEmit",
     "build:watch": "tsc-absolute -p tsconfig.build.json && tsc-absolute -p tsconfig.build.json --watch",
     "check:watch": "tsc-absolute --noEmit && tsc-absolute --watch --noEmit",

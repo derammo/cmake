@@ -6,18 +6,25 @@ set(DERAMMO_NPM_GENERATOR "${CMAKE_SOURCE_DIR}/cmake/scripts/generate_npm_packag
 # `npm install` with the lines that only say nothing happened filtered out
 set(DERAMMO_NPM_INSTALL ${CMAKE_COMMAND} -P "${CMAKE_SOURCE_DIR}/cmake/scripts/npm_install.cmake")
 
-# internal: set DERAMMO_CURRENT_TARGET_PREFIX in the caller's scope to the
-# current source directory's path relative to the source root, with slashes
-# replaced by underscores so it is usable as a target name prefix; the source
-# root itself gets the prefix "root"
-function(derammo_calculate_current_target_prefix)
-	file(RELATIVE_PATH DERAMMO_RELATIVE_CURRENT_SOURCE_DIR "${CMAKE_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}")
-	if(DERAMMO_RELATIVE_CURRENT_SOURCE_DIR STREQUAL "")
-		set(DERAMMO_CURRENT_TARGET_PREFIX "root")
+# internal: set DERAMMO_TARGET_PREFIX in the caller's scope to the given
+# source directory's path relative to the source root, with slashes replaced
+# by underscores so it is usable as a target name prefix; the source root
+# itself gets the prefix "root"
+function(derammo_calculate_target_prefix DERAMMO_TARGET_SOURCE_DIR)
+	file(RELATIVE_PATH DERAMMO_RELATIVE_SOURCE_DIR "${CMAKE_SOURCE_DIR}" "${DERAMMO_TARGET_SOURCE_DIR}")
+	if(DERAMMO_RELATIVE_SOURCE_DIR STREQUAL "")
+		set(DERAMMO_TARGET_PREFIX "root")
 	else()
-		string(REPLACE "/" "_" DERAMMO_CURRENT_TARGET_PREFIX "${DERAMMO_RELATIVE_CURRENT_SOURCE_DIR}")
+		string(REPLACE "/" "_" DERAMMO_TARGET_PREFIX "${DERAMMO_RELATIVE_SOURCE_DIR}")
 	endif()
-	set(DERAMMO_CURRENT_TARGET_PREFIX "${DERAMMO_CURRENT_TARGET_PREFIX}" PARENT_SCOPE)
+	set(DERAMMO_TARGET_PREFIX "${DERAMMO_TARGET_PREFIX}" PARENT_SCOPE)
+endfunction()
+
+# internal: derammo_calculate_target_prefix for the current source directory,
+# returned as DERAMMO_CURRENT_TARGET_PREFIX
+function(derammo_calculate_current_target_prefix)
+	derammo_calculate_target_prefix("${CMAKE_CURRENT_SOURCE_DIR}")
+	set(DERAMMO_CURRENT_TARGET_PREFIX "${DERAMMO_TARGET_PREFIX}" PARENT_SCOPE)
 endfunction()
 
 # internal: expand _package_template.json into package.json in the current source
@@ -186,13 +193,68 @@ function(derammo_workspaces_auto)
 	set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_CLEAN_FILES "${CMAKE_CURRENT_SOURCE_DIR}/node_modules")
 
 	derammo_calculate_current_target_prefix()
-	add_custom_target(${DERAMMO_CURRENT_TARGET_PREFIX}_npm ALL
+
+	# one npm install for the whole workspace, shared by every member build
+	add_custom_target(${DERAMMO_CURRENT_TARGET_PREFIX}_node_modules
 		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 		COMMAND ${DERAMMO_NPM_INSTALL}
-		COMMAND npm run build --workspaces --if-present --silent
-		COMMENT "building npm workspace in '${CMAKE_CURRENT_SOURCE_DIR}'"
+		COMMENT "installing npm dependencies in '${CMAKE_CURRENT_SOURCE_DIR}'"
 	)
-	# one test per member, run from the root so hoisted dependencies resolve
+
+	# one build target per member, run from the workspace root so hoisted
+	# dependencies resolve; the build stops at the first failing member instead
+	# of running through all of them the way `npm run build --workspaces` does
+	set(DERAMMO_NPM_MEMBER_NAMES "")
+	set(DERAMMO_NPM_MEMBER_TARGETS "")
+	foreach(DERAMMO_NPM_MEMBER_DIR ${DERAMMO_NPM_MEMBER_DIRS})
+		file(READ "${DERAMMO_NPM_MEMBER_DIR}/package.json" DERAMMO_NPM_PACKAGE_JSON)
+		string(JSON DERAMMO_NPM_MEMBER_NAME GET "${DERAMMO_NPM_PACKAGE_JSON}" name)
+		list(APPEND DERAMMO_NPM_MEMBER_NAMES "${DERAMMO_NPM_MEMBER_NAME}")
+
+		file(RELATIVE_PATH DERAMMO_NPM_MEMBER_RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "${DERAMMO_NPM_MEMBER_DIR}")
+		derammo_calculate_target_prefix("${DERAMMO_NPM_MEMBER_DIR}")
+		add_custom_target(${DERAMMO_TARGET_PREFIX}_npm
+			WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+			COMMAND npm run build --workspace "${DERAMMO_NPM_MEMBER_RELATIVE}" --if-present --silent
+			COMMENT "building npm package '${DERAMMO_NPM_MEMBER_NAME}' in '${DERAMMO_NPM_MEMBER_DIR}'"
+		)
+		add_dependencies(${DERAMMO_TARGET_PREFIX}_npm ${DERAMMO_CURRENT_TARGET_PREFIX}_node_modules)
+		list(APPEND DERAMMO_NPM_MEMBER_TARGETS ${DERAMMO_TARGET_PREFIX}_npm)
+	endforeach()
+
+	# translate dependencies and devDependencies on sibling members into target
+	# dependencies, so members build in dependency order and independent
+	# members can build in parallel
+	list(LENGTH DERAMMO_NPM_MEMBER_DIRS DERAMMO_NPM_MEMBER_COUNT)
+	if(DERAMMO_NPM_MEMBER_COUNT GREATER 0)
+		math(EXPR DERAMMO_NPM_MEMBER_LAST "${DERAMMO_NPM_MEMBER_COUNT} - 1")
+		foreach(DERAMMO_NPM_MEMBER_INDEX RANGE ${DERAMMO_NPM_MEMBER_LAST})
+			list(GET DERAMMO_NPM_MEMBER_DIRS ${DERAMMO_NPM_MEMBER_INDEX} DERAMMO_NPM_MEMBER_DIR)
+			list(GET DERAMMO_NPM_MEMBER_TARGETS ${DERAMMO_NPM_MEMBER_INDEX} DERAMMO_NPM_MEMBER_TARGET)
+			file(READ "${DERAMMO_NPM_MEMBER_DIR}/package.json" DERAMMO_NPM_PACKAGE_JSON)
+			foreach(DERAMMO_NPM_DEPENDENCY_KIND dependencies devDependencies)
+				foreach(DERAMMO_NPM_PROVIDER_INDEX RANGE ${DERAMMO_NPM_MEMBER_LAST})
+					if(NOT DERAMMO_NPM_PROVIDER_INDEX EQUAL DERAMMO_NPM_MEMBER_INDEX)
+						list(GET DERAMMO_NPM_MEMBER_NAMES ${DERAMMO_NPM_PROVIDER_INDEX} DERAMMO_NPM_PROVIDER_NAME)
+						string(JSON DERAMMO_NPM_DEPENDENCY_VERSION ERROR_VARIABLE DERAMMO_NPM_JSON_ERROR
+							GET "${DERAMMO_NPM_PACKAGE_JSON}" ${DERAMMO_NPM_DEPENDENCY_KIND} "${DERAMMO_NPM_PROVIDER_NAME}")
+						if(NOT DERAMMO_NPM_JSON_ERROR)
+							list(GET DERAMMO_NPM_MEMBER_TARGETS ${DERAMMO_NPM_PROVIDER_INDEX} DERAMMO_NPM_PROVIDER_TARGET)
+							add_dependencies(${DERAMMO_NPM_MEMBER_TARGET} ${DERAMMO_NPM_PROVIDER_TARGET})
+						endif()
+					endif()
+				endforeach()
+			endforeach()
+		endforeach()
+	endif()
+
+	# umbrella target that builds the whole workspace
+	add_custom_target(${DERAMMO_CURRENT_TARGET_PREFIX}_npm ALL)
+	add_dependencies(${DERAMMO_CURRENT_TARGET_PREFIX}_npm
+		${DERAMMO_CURRENT_TARGET_PREFIX}_node_modules ${DERAMMO_NPM_MEMBER_TARGETS})
+
+	# one test per member, run from the workspace root so hoisted dependencies
+	# resolve
 	foreach(DERAMMO_NPM_MEMBER_DIR ${DERAMMO_NPM_MEMBER_DIRS})
 		file(RELATIVE_PATH DERAMMO_NPM_MEMBER_RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "${DERAMMO_NPM_MEMBER_DIR}")
 		string(REPLACE "/" "_" DERAMMO_NPM_MEMBER_TEST "${DERAMMO_CURRENT_TARGET_PREFIX}_${DERAMMO_NPM_MEMBER_RELATIVE}")

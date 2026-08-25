@@ -3,6 +3,6 @@
     "_package_template_typescript.json"
   ],
   "scripts": {
-    "build": "echo \"       building $npm_package_name ...\" && tsc-absolute -p tsconfig.build.json && TARBALL=$(npm pack --quiet) && ln -sf \"$TARBALL\" \"${TARBALL%-$npm_package_version.tgz}-current.tgz\""
+    "build": "tsc-absolute -p tsconfig.build.json && TARBALL=$(npm pack --quiet) && ln -sf \"$TARBALL\" \"${TARBALL%-$npm_package_version.tgz}-current.tgz\""
   }
 }
