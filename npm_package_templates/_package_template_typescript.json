@@ -3,9 +3,10 @@
     "_package_template_base.json"
   ],
   "scripts": {
-    "build": "tsc-absolute -p tsconfig.build.json",
+    "build:base": "tsc-absolute -p tsconfig.build.json --sourceRoot \"$npm_package_name/\"",
+    "build": "echo \"       building $npm_package_name ...\" && npm run build:base",
     "check": "tsc-absolute --noEmit",
-    "build:watch": "tsc-absolute -p tsconfig.build.json && tsc-absolute -p tsconfig.build.json --watch",
+    "build:watch": "npm run build:base && tsc-absolute -p tsconfig.build.json --sourceRoot \"$npm_package_name/\" --watch",
     "check:watch": "tsc-absolute --noEmit && tsc-absolute --watch --noEmit",
     "format": "prettier --print-width 120 --no-error-on-unmatched-pattern --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "lint": "eslint",

@@ -75,6 +75,7 @@ function canonicalize(value: unknown, preserveOrder: boolean): unknown {
 }
 
 function canonicalPackageJson(value: JsonObject): string {
+  // output is special sort, so cannot use the usual canonicalStringify here; also this runs during build
   return JSON.stringify(canonicalize(value, false), null, 2);
 }
 

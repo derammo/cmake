@@ -1,7 +1,7 @@
 {
   "scripts": {
     "dev": "NODE_OPTIONS=--inspect vite -l info dev",
-    "build": "vite build",
+    "build": "echo \"       building $npm_package_name ...\" && vite build",
     "build:watch": "vite build --watch",
     "preview": "vite preview --port 3001",
     "debug-preview": "NODE_OPTIONS=--inspect vite preview",
