@@ -102,11 +102,18 @@ class PackageJsonGenerator {
       result = deepMerge(result, { workspaces }) as JsonObject;
     }
 
+    // an unchanged output keeps its timestamp, so build systems that depend on
+    // it do not reconfigure just because another build tree was configured
+    const outputPath = path.join(packageDirectory, OUTPUT_FILENAME);
+    const content = canonicalPackageJson(result) + "\n";
+    if (fs.existsSync(outputPath) && fs.readFileSync(outputPath, "utf8") === content) {
+      return;
+    }
+
     // the output is read only to discourage editing a generated file, so any
     // previous generation must be removed before writing
-    const outputPath = path.join(packageDirectory, OUTPUT_FILENAME);
     fs.rmSync(outputPath, { force: true });
-    fs.writeFileSync(outputPath, canonicalPackageJson(result) + "\n");
+    fs.writeFileSync(outputPath, content);
     fs.chmodSync(outputPath, 0o444);
   }
 
