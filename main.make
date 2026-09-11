@@ -25,7 +25,6 @@ clean:
 # tree are not ours to touch
 squeaky: clean $(DERAMMO_SQUEAKY_TARGETS)
 	rm -rf $(DERAMMO_PLATFORM)
-	rm -rf Windows
 	rm -rf node_modules cmake/scripts/node_modules
 
 configure: $(DERAMMO_PLATFORM)/Release \

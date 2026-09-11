@@ -127,6 +127,51 @@ function(derammo_npm_test_properties DERAMMO_NPM_TEST DERAMMO_NPM_PACKAGE_DIR)
 	endif()
 endfunction()
 
+# internal: order the given consumer targets after the builds of every locally
+# built tarball the package in DERAMMO_NPM_PACKAGE_DIR depends on; a dependency
+# whose version is file:<path>.tgz names a tarball that `npm pack` left in the
+# directory of the package that built it, so that directory's _npm target is
+# the provider; the target name follows from the directory alone, but the
+# directory must already be registered in DERAMMO_NPM_PACKAGES, i.e. the
+# provider must have declared derammo_npm() before the consumer, so a tarball
+# from anywhere else is an error rather than a silently missing dependency
+#
+# derammo_npm_tarball_dependencies(<package-dir> <consumer-target>...)
+function(derammo_npm_tarball_dependencies DERAMMO_NPM_PACKAGE_DIR)
+	file(READ "${DERAMMO_NPM_PACKAGE_DIR}/package.json" DERAMMO_NPM_PACKAGE_JSON)
+	get_property(DERAMMO_NPM_PACKAGES GLOBAL PROPERTY DERAMMO_NPM_PACKAGES)
+	foreach(DERAMMO_NPM_DEPENDENCY_KIND dependencies devDependencies)
+		string(JSON DERAMMO_NPM_DEPENDENCIES ERROR_VARIABLE DERAMMO_NPM_JSON_ERROR
+			GET "${DERAMMO_NPM_PACKAGE_JSON}" ${DERAMMO_NPM_DEPENDENCY_KIND})
+		if(DERAMMO_NPM_JSON_ERROR)
+			continue()
+		endif()
+		string(JSON DERAMMO_NPM_DEPENDENCY_COUNT LENGTH "${DERAMMO_NPM_DEPENDENCIES}")
+		if(DERAMMO_NPM_DEPENDENCY_COUNT EQUAL 0)
+			continue()
+		endif()
+		math(EXPR DERAMMO_NPM_DEPENDENCY_LAST "${DERAMMO_NPM_DEPENDENCY_COUNT} - 1")
+		foreach(DERAMMO_NPM_DEPENDENCY_INDEX RANGE ${DERAMMO_NPM_DEPENDENCY_LAST})
+			string(JSON DERAMMO_NPM_DEPENDENCY_NAME MEMBER "${DERAMMO_NPM_DEPENDENCIES}" ${DERAMMO_NPM_DEPENDENCY_INDEX})
+			string(JSON DERAMMO_NPM_DEPENDENCY_VERSION GET "${DERAMMO_NPM_DEPENDENCIES}" "${DERAMMO_NPM_DEPENDENCY_NAME}")
+			if(NOT DERAMMO_NPM_DEPENDENCY_VERSION MATCHES "^file:(.*\\.tgz)$")
+				continue()
+			endif()
+			get_filename_component(DERAMMO_NPM_TARBALL "${CMAKE_MATCH_1}" ABSOLUTE BASE_DIR "${DERAMMO_NPM_PACKAGE_DIR}")
+			get_filename_component(DERAMMO_NPM_PROVIDER_DIR "${DERAMMO_NPM_TARBALL}" DIRECTORY)
+			if(NOT DERAMMO_NPM_PROVIDER_DIR IN_LIST DERAMMO_NPM_PACKAGES)
+				message(FATAL_ERROR
+					"npm package in '${DERAMMO_NPM_PACKAGE_DIR}' depends on tarball '${DERAMMO_NPM_TARBALL}', "
+					"but no package declared with derammo_npm() before it builds in '${DERAMMO_NPM_PROVIDER_DIR}'")
+			endif()
+			derammo_calculate_target_prefix("${DERAMMO_NPM_PROVIDER_DIR}")
+			foreach(DERAMMO_NPM_CONSUMER_TARGET IN LISTS ARGN)
+				add_dependencies(${DERAMMO_NPM_CONSUMER_TARGET} ${DERAMMO_TARGET_PREFIX}_npm)
+			endforeach()
+		endforeach()
+	endforeach()
+endfunction()
+
 # declare an npm package in the current source directory, generating its
 # package.json from _package_template.json at configure time; inside a workspace
 # the workspace root builds and tests all packages, so a standalone package
@@ -137,9 +182,6 @@ function(derammo_npm)
 	# register with the enclosing workspace, if any
 	set_property(GLOBAL APPEND PROPERTY DERAMMO_NPM_PACKAGES "${CMAKE_CURRENT_SOURCE_DIR}")
 
-	# the clean target removes our npm installation
-	set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_CLEAN_FILES "${CMAKE_CURRENT_SOURCE_DIR}/node_modules")
-
 	if(NOT DEFINED DERAMMO_NPM_WORKSPACE_ROOT)
 		derammo_calculate_current_target_prefix()
 		add_custom_target(${DERAMMO_CURRENT_TARGET_PREFIX}_npm ALL
@@ -148,6 +190,8 @@ function(derammo_npm)
 			COMMAND npm run build --if-present --silent
 			COMMENT "building npm package in '${CMAKE_CURRENT_SOURCE_DIR}'"
 		)
+		# the install above extracts locally built tarballs, so they must be built first
+		derammo_npm_tarball_dependencies("${CMAKE_CURRENT_SOURCE_DIR}" ${DERAMMO_CURRENT_TARGET_PREFIX}_npm)
 		add_test(NAME ${DERAMMO_CURRENT_TARGET_PREFIX}_npm
 			COMMAND npm run test --if-present --silent
 			WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
@@ -163,6 +207,10 @@ endfunction()
 function(derammo_workspaces_auto)
 	# visible to all subdirectories added below
 	set(DERAMMO_NPM_WORKSPACE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}")
+
+	# register as one of the workspace roots in the tree, alongside the
+	# DERAMMO_NPM_PACKAGES list of individual packages
+	set_property(GLOBAL APPEND PROPERTY DERAMMO_NPM_WORKSPACE_ROOTS "${CMAKE_CURRENT_SOURCE_DIR}")
 
 	file(GLOB_RECURSE DERAMMO_NPM_CANDIDATES RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "CMakeLists.txt")
 	foreach(DERAMMO_NPM_CANDIDATE ${DERAMMO_NPM_CANDIDATES})
@@ -219,6 +267,10 @@ function(derammo_workspaces_auto)
 			COMMENT "building npm package '${DERAMMO_NPM_MEMBER_NAME}' in '${DERAMMO_NPM_MEMBER_DIR}'"
 		)
 		add_dependencies(${DERAMMO_TARGET_PREFIX}_npm ${DERAMMO_CURRENT_TARGET_PREFIX}_node_modules)
+		# the workspace install extracts every member's locally built tarballs, so
+		# they must be built before it, not just before the member that uses them
+		derammo_npm_tarball_dependencies("${DERAMMO_NPM_MEMBER_DIR}"
+			${DERAMMO_CURRENT_TARGET_PREFIX}_node_modules ${DERAMMO_TARGET_PREFIX}_npm)
 		list(APPEND DERAMMO_NPM_MEMBER_TARGETS ${DERAMMO_TARGET_PREFIX}_npm)
 	endforeach()
 
@@ -268,6 +320,29 @@ function(derammo_workspaces_auto)
 	# export state for a subsequent derammo_npm_install() call from the same directory
 	set(DERAMMO_NPM_WORKSPACE_TARGET_PREFIX "${DERAMMO_CURRENT_TARGET_PREFIX}" PARENT_SCOPE)
 	set(DERAMMO_NPM_WORKSPACE_MEMBER_DIRS "${DERAMMO_NPM_MEMBER_DIRS}" PARENT_SCOPE)
+endfunction()
+
+# define the npm_squeaky target, which removes the installed dependencies and
+# build outputs (node_modules, dist, tsconfig*.tsbuildinfo) of every npm package
+# and workspace root registered so far; not in ALL, the source root's
+# `make squeaky` runs it before removing the build tree itself; call from the
+# root CMakeLists.txt after the last add_subdirectory() that declares packages
+function(derammo_npm_squeaky)
+	get_property(DERAMMO_NPM_SQUEAKY_DIRS GLOBAL PROPERTY DERAMMO_NPM_PACKAGES)
+	get_property(DERAMMO_NPM_SQUEAKY_WORKSPACE_ROOTS GLOBAL PROPERTY DERAMMO_NPM_WORKSPACE_ROOTS)
+	list(APPEND DERAMMO_NPM_SQUEAKY_DIRS ${DERAMMO_NPM_SQUEAKY_WORKSPACE_ROOTS})
+
+	# one script invocation per directory, so no list has to survive a command line
+	set(DERAMMO_NPM_SQUEAKY_COMMANDS "")
+	foreach(DERAMMO_NPM_SQUEAKY_DIR IN LISTS DERAMMO_NPM_SQUEAKY_DIRS)
+		list(APPEND DERAMMO_NPM_SQUEAKY_COMMANDS
+			COMMAND ${CMAKE_COMMAND} "-DDERAMMO_NPM_DIR=${DERAMMO_NPM_SQUEAKY_DIR}" -P "${CMAKE_SOURCE_DIR}/cmake/scripts/npm_squeaky.cmake")
+	endforeach()
+	add_custom_target(npm_squeaky
+		${DERAMMO_NPM_SQUEAKY_COMMANDS}
+		COMMENT "removing npm installations and build outputs"
+		VERBATIM
+	)
 endfunction()
 
 # stage the workspace's production install closure and package it as a CPack
