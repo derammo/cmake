@@ -1,5 +1,5 @@
 node_modules/
 dist/
 junit.xml
-tsconfig.buildinfo
-tsconfig.*.buildinfo
+tsconfig.tsbuildinfo
+tsconfig.*.tsbuildinfo
