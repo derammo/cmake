@@ -11,10 +11,6 @@ export default tseslint.config(
       'max-lines': ['warn', { max: 200, skipBlankLines: true, skipComments: true }],
       'max-lines-per-function': ['warn', { max: 50, skipBlankLines: true, skipComments: true }],
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
-      'no-restricted-syntax': ['error',
-        { selector: 'TSImportType', message: 'Use a top-level import instead of inline import() type expressions.' },
-        { selector: 'ImportDeclaration[importKind="type"]:has(ImportSpecifier)', message: 'Use import { type Foo } instead of import type { Foo }.' },
-      ],
     },
   },
   {
