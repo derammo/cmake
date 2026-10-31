@@ -24,7 +24,10 @@ if(EXISTS "/bin/bash")
 			# the hook is a frozen copy of the script, not a reference into the
 			# work tree, so pulling new repo content cannot change what runs at
 			# commit time; updating requires deleting the hook and rebuilding;
-			# no DEPENDS, so the rule runs only while the hook does not exist
+			# no DEPENDS, so the rule runs only while the hook does not exist;
+			# the full path names the repository the hook lands in, which for a
+			# submodule is under the enclosing checkout's .git/modules
+			message(STATUS "build will place the format pre-commit hook at ${DERAMMO_GITHOOK_HOOKS_DIR}/pre-commit")
 			add_custom_command(OUTPUT "${DERAMMO_GITHOOK_HOOKS_DIR}/pre-commit"
 				COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_LIST_DIR}/scripts/format_all.sh" "${DERAMMO_GITHOOK_HOOKS_DIR}/pre-commit"
 				COMMENT "installing git pre-commit format hook"

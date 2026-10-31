@@ -1,5 +1,13 @@
 include_guard()
 
+# set OUT_REGEX to a regular expression that matches DERAMMO_TEXT literally,
+# by escaping every regex operator in it, so that a path with `.` or `+` in
+# it can be used as a prefix of a filter regex
+function(derammo_escape_regex_operators DERAMMO_TEXT OUT_REGEX)
+  string(REGEX REPLACE "([][.^$|()*+?{}\\])" "\\\\\\1" DERAMMO_ESCAPED "${DERAMMO_TEXT}")
+  set(${OUT_REGEX} "${DERAMMO_ESCAPED}" PARENT_SCOPE)
+endfunction()
+
 function(derammo_assert_non_empty DERAMMO_VARIABLE)
   if ("${${DERAMMO_VARIABLE}}" STREQUAL "")
     message(FATAL_ERROR "unexpected: the DERAMMO_VARIABLE ${DERAMMO_VARIABLE} is empty or not set")

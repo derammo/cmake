@@ -12,7 +12,30 @@ DERAMMO_PLATFORM := $(strip $(shell uname -s))
 DERAMMO_CMAKE_LISTS := $(shell find . -name "CMakeLists.txt") cmake/main.make
 DERAMMO_CMAKE_SOURCES := $(wildcard cmake/derammo*.cmake)
 
-.PHONY: all clean squeaky configure release package docker relWithDebInfo debug probe info test trace
+# the switch files and fetched tools that turn the C++ lint on; wildcard is
+# evaluated at make time, so one that is absent drops out of the list instead of
+# being a missing prerequisite, and one that newly appears re-runs configure
+# (a switch file that exists is also a CMAKE_CONFIGURE_DEPENDS of the project,
+# which covers editing or deleting it)
+DERAMMO_LINT_INPUTS := $(wildcard .clang-format .clang-tidy $(HOME)/.local/bin/clang-format $(HOME)/.local/bin/clang-tidy)
+
+# how many lint tests ctest runs at once under `make lint`; each lint test is
+# one tool run on one file with no shared state, so any level is safe, and
+# this reaches no other ctest invocation, whose tests keep running one at a
+# time; set in the environment or as `make lint DERAMMO_LINT_PARALLEL_LEVEL=4`;
+# a clang-tidy run can take a gigabyte, which is the limit on small machines
+DERAMMO_LINT_PARALLEL_LEVEL ?= 10
+
+# `make lint DERAMMO_SKIP_BUILD=1` runs the lint tests without building Debug
+# first; the tests read sources and the compile database, so the tree is still
+# configured, which does nothing when no input changed
+ifneq ($(DERAMMO_SKIP_BUILD),)
+DERAMMO_LINT_PREREQUISITES := $(DERAMMO_PLATFORM)/Debug $(DERAMMO_PLATFORM)/Debug/Makefile
+else
+DERAMMO_LINT_PREREQUISITES := debug
+endif
+
+.PHONY: all clean squeaky configure release package docker relWithDebInfo debug probe info test trace lint format
 all: release $(DERAMMO_ALL_TARGETS)
 
 clean: 
@@ -56,6 +79,7 @@ info:
 	@echo $(DERAMMO_PLATFORM)
 	@echo $(DERAMMO_CMAKE_LISTS)
 	@echo $(DERAMMO_CMAKE_SOURCES)
+	@echo $(DERAMMO_LINT_INPUTS)
 
 # every test provider registers with ctest under a label naming the provider
 # (gtest, npm, vitest, jest, maven, ...), so this runs all of them; JUnit XML
@@ -68,6 +92,27 @@ test: debug
 # in the build directory lists what is registered
 test-%: debug
 	cd $(DERAMMO_PLATFORM)/Debug && ctest --output-on-failure --output-junit junit/ctest.xml -L $*
+
+# the C++ lint checks (format conformance, clang-tidy, file length) are ctests
+# labelled lint; the same tests as `make test-lint`, run DERAMMO_LINT_PARALLEL_LEVEL
+# at a time, after building Debug unless DERAMMO_SKIP_BUILD is set
+lint: $(DERAMMO_LINT_PREREQUISITES)
+	cd $(DERAMMO_PLATFORM)/Debug && ctest --output-on-failure --output-junit junit/ctest.xml -L lint -j $(DERAMMO_LINT_PARALLEL_LEVEL)
+
+# the configuration whose build tree `make format` runs in: the first of
+# Release, Debug and RelWithDebInfo that is configured, so formatting never
+# configures a second tree, and Debug when none is; the lint set and the tool
+# are the same in every configuration; set as `make format DERAMMO_FORMAT_CONFIG=Debug`
+DERAMMO_FORMAT_CONFIG ?= $(firstword $(patsubst $(DERAMMO_PLATFORM)/%/Makefile,%,$(wildcard $(DERAMMO_PLATFORM)/Release/Makefile $(DERAMMO_PLATFORM)/Debug/Makefile $(DERAMMO_PLATFORM)/RelWithDebInfo/Makefile)) Debug)
+
+# rewrite the sources in place with every formatter the build registered
+# (clang-format for the C and C++ lint set when .clang-format is present and
+# a matching tool was found, the format script of every npm package, ...),
+# through the build tree of DERAMMO_FORMAT_CONFIG, configured first when it
+# is missing or stale (a switch file or a tool that appeared since makes it
+# stale); see derammo_format.cmake for how a provider registers
+format: $(DERAMMO_PLATFORM)/$(DERAMMO_FORMAT_CONFIG) $(DERAMMO_PLATFORM)/$(DERAMMO_FORMAT_CONFIG)/Makefile
+	cd $(DERAMMO_PLATFORM)/$(DERAMMO_FORMAT_CONFIG) && make format
 
 # XXX: testRelease
 
@@ -82,11 +127,11 @@ $(DERAMMO_PLATFORM)/RelWithDebInfo:
 	mkdir -p $@
 
 # recompile cmake if necessary
-$(DERAMMO_PLATFORM)/%/Makefile: $(DERAMMO_CMAKE_SOURCES) $(DERAMMO_CMAKE_LISTS) Makefile
+$(DERAMMO_PLATFORM)/%/Makefile: $(DERAMMO_CMAKE_SOURCES) $(DERAMMO_CMAKE_LISTS) $(DERAMMO_LINT_INPUTS) Makefile
 	# on platforms where we use make to update the cmake files, we only support g++/gcc as compilers
 	# which is aliased on Darwin to use the preferred compiler there also
 	cmake -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -S . -B $(DERAMMO_PLATFORM)/$* -DCMAKE_BUILD_TYPE=$* -DDERAMMO_RELATIVE_BINARY_DIR=$(DERAMMO_PLATFORM)/$*
 
 # compile cmake for debug tracing of CMake operation
-trace: $(DERAMMO_CMAKE_SOURCES) $(DERAMMO_CMAKE_LISTS) Makefile
+trace: $(DERAMMO_CMAKE_SOURCES) $(DERAMMO_CMAKE_LISTS) $(DERAMMO_LINT_INPUTS) Makefile
 	cmake --trace -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -S . -B $(DERAMMO_PLATFORM)/Debug -DCMAKE_BUILD_TYPE=Debug -DDERAMMO_RELATIVE_BINARY_DIR=$(DERAMMO_PLATFORM)/Debug

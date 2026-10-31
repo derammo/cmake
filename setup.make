@@ -9,6 +9,10 @@ root: Makefile CMakeLists.txt .gitignore
 # location of this makefile's folder, so npm targets can be run from subdirectories at any depth
 DERAMMO_SETUP_DIR := $(dir $(lastword $(MAKEFILE_LIST)))
 
+# what the build will configure as CMAKE_SOURCE_DIR: the parent of this
+# submodule, at whatever depth the target being initialized is
+DERAMMO_SOURCE_DIR := $(DERAMMO_SETUP_DIR)../
+
 # default library type
 DERAMMO_LIBRARY_TYPE=SHARED
 
@@ -23,6 +27,8 @@ library: ../CMakeLists.txt
 		>> CMakeLists.txt && \
 	echo "include(sources.cmake)" \
 		>> CMakeLists.txt && \
+	echo "derammo_lint_target($${PROJECT_NAME})" \
+		>> CMakeLists.txt && \
 	: > sources.cmake && \
 	for local in *.cpp *.cxx *.cc *.c *.hpp *.hh *.h ; do \
 		[ -f $${local} ] && echo "target_sources($${PROJECT_NAME} PUBLIC $${local})" >> sources.cmake || true ; \
@@ -33,6 +39,8 @@ library: ../CMakeLists.txt
 	for private in $$(find src -type f \( -name '*.cpp' -or -name '*.cxx' -or -name '*.cc' -or -name '*.c' -or -name '*.hpp' -or -name '*.hh' -or -name '*.h' \)) ; do \
 		[ -f $${private} ] && echo "target_sources($${PROJECT_NAME} PRIVATE $${private})" >> sources.cmake || true ; \
 	done
+	[ -f $(DERAMMO_SOURCE_DIR).clang-format ] || cp $(DERAMMO_SETUP_DIR)setup_templates/clang-format.init $(DERAMMO_SOURCE_DIR).clang-format
+	[ -f $(DERAMMO_SOURCE_DIR).clang-tidy ] || cp $(DERAMMO_SETUP_DIR)setup_templates/clang-tidy.init $(DERAMMO_SOURCE_DIR).clang-tidy
 
 # refuse to set up npm support on top of an existing package.json, since the build
 # will replace it with a generated file
@@ -116,6 +124,8 @@ executable: ../CMakeLists.txt
 		>> CMakeLists.txt && \
 	echo "include(sources.cmake)" \
 		>> CMakeLists.txt && \
+	echo "derammo_lint_target($${PROJECT_NAME})" \
+		>> CMakeLists.txt && \
 	: > sources.cmake && \
 	for local in *.cpp *.cxx *.cc *.c *.hpp *.hh *.h ; do \
 		[ -f $${local} ] && echo "target_sources($${PROJECT_NAME} PUBLIC $${local})" >> sources.cmake || true ; \
@@ -123,6 +133,8 @@ executable: ../CMakeLists.txt
 	for private in $$(find src -type f \( -name '*.cpp' -or -name '*.cxx' -or -name '*.cc' -or -name '*.c' -or -name '*.hpp' -or -name '*.hh' -or -name '*.h' \)) ; do \
 		[ -f $${private} ] && echo "target_sources($${PROJECT_NAME} PRIVATE $${private})" >> sources.cmake || true ; \
 	done
+	[ -f $(DERAMMO_SOURCE_DIR).clang-format ] || cp $(DERAMMO_SETUP_DIR)setup_templates/clang-format.init $(DERAMMO_SOURCE_DIR).clang-format
+	[ -f $(DERAMMO_SOURCE_DIR).clang-tidy ] || cp $(DERAMMO_SETUP_DIR)setup_templates/clang-tidy.init $(DERAMMO_SOURCE_DIR).clang-tidy
 
 Makefile: | cmake/setup_templates/Makefile.init
 	cp cmake/setup_templates/Makefile.init $@

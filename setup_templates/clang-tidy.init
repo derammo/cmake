@@ -1,0 +1,27 @@
+# clang-tidy 21
+# LineThreshold counts every line of the function body, blank and comment
+# lines included.
+# HeaderFilterRegex is empty here; the build supplies it on the command line.
+Checks: >
+  bugprone-*,
+  cert-*,
+  clang-analyzer-*,
+  concurrency-*,
+  cppcoreguidelines-*,
+  misc-*,
+  modernize-*,
+  performance-*,
+  portability-*,
+  readability-*,
+  -modernize-use-trailing-return-type,
+  -readability-identifier-length,
+  -misc-non-private-member-variables-in-classes,
+  -cppcoreguidelines-non-private-member-variables-in-classes,
+  -portability-avoid-pragma-once,
+  -cppcoreguidelines-pro-bounds-constant-array-index,
+  -performance-enum-size
+WarningsAsErrors: '*'
+HeaderFilterRegex: ''
+CheckOptions:
+  readability-function-cognitive-complexity.Threshold: 15
+  readability-function-size.LineThreshold: 50

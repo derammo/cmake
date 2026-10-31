@@ -54,6 +54,20 @@ function(derammo_add_gtest_target DERAMMO_TARGET)
 
     # using up to C++20 for testing
     target_compile_features(${DERAMMO_GTEST_TARGET} PRIVATE cxx_std_20)
+
+    # test code is compiled as strictly as production code and gets the same
+    # code quality tests, except the size rule; its relaxed clang-tidy config
+    # lives next to it, inheriting the project's, is written only while the
+    # project's .clang-tidy switches clang-tidy on, and once written is the
+    # project's to edit
+    derammo_lint_target(${DERAMMO_GTEST_TARGET})
+    set_property(GLOBAL APPEND PROPERTY DERAMMO_LINT_GTEST_TARGETS ${DERAMMO_GTEST_TARGET})
+    if(EXISTS "${CMAKE_SOURCE_DIR}/.clang-tidy"
+        AND IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/gtest"
+        AND NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/gtest/.clang-tidy")
+        configure_file("${CMAKE_CURRENT_FUNCTION_LIST_DIR}/setup_templates/gtest_clang-tidy.init"
+            "${CMAKE_CURRENT_SOURCE_DIR}/gtest/.clang-tidy" COPYONLY)
+    endif()
 endfunction()
 
 # helper for projects that just want to add all gtest sources, regardless of whether they use fixed sources for production code

@@ -1,9 +1,12 @@
 include_guard()
 
+include("${CMAKE_CURRENT_LIST_DIR}/derammo_npm_tarballs.cmake")
+
 # template expansion script, run directly by node without compilation
 set(DERAMMO_NPM_GENERATOR "${CMAKE_SOURCE_DIR}/cmake/scripts/generate_npm_package_json.ts")
 
-# `npm install` with the lines that only say nothing happened filtered out
+# `npm install` with the lines that only say nothing happened filtered out;
+# locally built tarball dependencies are updated first
 set(DERAMMO_NPM_INSTALL ${CMAKE_COMMAND} -P "${CMAKE_SOURCE_DIR}/cmake/scripts/npm_install.cmake")
 
 # internal: set DERAMMO_TARGET_PREFIX in the caller's scope to the given
@@ -63,7 +66,6 @@ function(derammo_npm_generate DERAMMO_NPM_WORKSPACES_JSON)
 			CMAKE_CONFIGURE_DEPENDS ${DERAMMO_NPM_TEMPLATES})
 	endforeach()
 
-	message(STATUS "generating package.json in '${CMAKE_CURRENT_SOURCE_DIR}'")
 	execute_process(
 		COMMAND ${CMAKE_COMMAND} -E env
 			"DERAMMO_NPM_PACKAGE_TEMPLATE_PATH=${DERAMMO_NPM_TEMPLATE_PATH}"
@@ -83,7 +85,7 @@ function(derammo_npm_generate DERAMMO_NPM_WORKSPACES_JSON)
 			"DERAMMO_NPM_WORKSPACES=${DERAMMO_NPM_WORKSPACES_JSON}"
 			node "${DERAMMO_NPM_GENERATOR}"
 		WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-		COMMENT "regenerating package.json in '${CMAKE_CURRENT_SOURCE_DIR}'"
+		COMMENT "updating package.json in '${CMAKE_CURRENT_SOURCE_DIR}'"
 		VERBATIM
 	)
 endfunction()
@@ -138,38 +140,41 @@ endfunction()
 #
 # derammo_npm_tarball_dependencies(<package-dir> <consumer-target>...)
 function(derammo_npm_tarball_dependencies DERAMMO_NPM_PACKAGE_DIR)
-	file(READ "${DERAMMO_NPM_PACKAGE_DIR}/package.json" DERAMMO_NPM_PACKAGE_JSON)
+	derammo_npm_tarball_dependency_list("${DERAMMO_NPM_PACKAGE_DIR}" DERAMMO_NPM_NAMES DERAMMO_NPM_TARBALLS)
 	get_property(DERAMMO_NPM_PACKAGES GLOBAL PROPERTY DERAMMO_NPM_PACKAGES)
-	foreach(DERAMMO_NPM_DEPENDENCY_KIND dependencies devDependencies)
-		string(JSON DERAMMO_NPM_DEPENDENCIES ERROR_VARIABLE DERAMMO_NPM_JSON_ERROR
-			GET "${DERAMMO_NPM_PACKAGE_JSON}" ${DERAMMO_NPM_DEPENDENCY_KIND})
-		if(DERAMMO_NPM_JSON_ERROR)
-			continue()
+	foreach(DERAMMO_NPM_TARBALL ${DERAMMO_NPM_TARBALLS})
+		get_filename_component(DERAMMO_NPM_PROVIDER_DIR "${DERAMMO_NPM_TARBALL}" DIRECTORY)
+		if(NOT DERAMMO_NPM_PROVIDER_DIR IN_LIST DERAMMO_NPM_PACKAGES)
+			message(FATAL_ERROR
+				"npm package in '${DERAMMO_NPM_PACKAGE_DIR}' depends on tarball '${DERAMMO_NPM_TARBALL}', "
+				"but no package declared with derammo_npm() before it builds in '${DERAMMO_NPM_PROVIDER_DIR}'")
 		endif()
-		string(JSON DERAMMO_NPM_DEPENDENCY_COUNT LENGTH "${DERAMMO_NPM_DEPENDENCIES}")
-		if(DERAMMO_NPM_DEPENDENCY_COUNT EQUAL 0)
-			continue()
-		endif()
-		math(EXPR DERAMMO_NPM_DEPENDENCY_LAST "${DERAMMO_NPM_DEPENDENCY_COUNT} - 1")
-		foreach(DERAMMO_NPM_DEPENDENCY_INDEX RANGE ${DERAMMO_NPM_DEPENDENCY_LAST})
-			string(JSON DERAMMO_NPM_DEPENDENCY_NAME MEMBER "${DERAMMO_NPM_DEPENDENCIES}" ${DERAMMO_NPM_DEPENDENCY_INDEX})
-			string(JSON DERAMMO_NPM_DEPENDENCY_VERSION GET "${DERAMMO_NPM_DEPENDENCIES}" "${DERAMMO_NPM_DEPENDENCY_NAME}")
-			if(NOT DERAMMO_NPM_DEPENDENCY_VERSION MATCHES "^file:(.*\\.tgz)$")
-				continue()
-			endif()
-			get_filename_component(DERAMMO_NPM_TARBALL "${CMAKE_MATCH_1}" ABSOLUTE BASE_DIR "${DERAMMO_NPM_PACKAGE_DIR}")
-			get_filename_component(DERAMMO_NPM_PROVIDER_DIR "${DERAMMO_NPM_TARBALL}" DIRECTORY)
-			if(NOT DERAMMO_NPM_PROVIDER_DIR IN_LIST DERAMMO_NPM_PACKAGES)
-				message(FATAL_ERROR
-					"npm package in '${DERAMMO_NPM_PACKAGE_DIR}' depends on tarball '${DERAMMO_NPM_TARBALL}', "
-					"but no package declared with derammo_npm() before it builds in '${DERAMMO_NPM_PROVIDER_DIR}'")
-			endif()
-			derammo_calculate_target_prefix("${DERAMMO_NPM_PROVIDER_DIR}")
-			foreach(DERAMMO_NPM_CONSUMER_TARGET IN LISTS ARGN)
-				add_dependencies(${DERAMMO_NPM_CONSUMER_TARGET} ${DERAMMO_TARGET_PREFIX}_npm)
-			endforeach()
+		derammo_calculate_target_prefix("${DERAMMO_NPM_PROVIDER_DIR}")
+		foreach(DERAMMO_NPM_CONSUMER_TARGET IN LISTS ARGN)
+			add_dependencies(${DERAMMO_NPM_CONSUMER_TARGET} ${DERAMMO_TARGET_PREFIX}_npm)
 		endforeach()
 	endforeach()
+endfunction()
+
+# internal: create the target <prefix>_format that runs the package's `format`
+# script, if it has one, from DERAMMO_NPM_RUN_DIR, and register it with the
+# build tree's `format` target; DERAMMO_NPM_WORKSPACE is the member's path
+# relative to the workspace root when the script runs from there, so hoisted
+# dependencies resolve, or empty for a standalone package running in its own
+# directory; the script needs the package's dependencies installed, which the
+# build does
+function(derammo_npm_format_target DERAMMO_NPM_PREFIX DERAMMO_NPM_RUN_DIR DERAMMO_NPM_WORKSPACE)
+	if(DERAMMO_NPM_WORKSPACE STREQUAL "")
+		set(DERAMMO_NPM_WORKSPACE_ARGS "")
+	else()
+		set(DERAMMO_NPM_WORKSPACE_ARGS --workspace "${DERAMMO_NPM_WORKSPACE}")
+	endif()
+	add_custom_target(${DERAMMO_NPM_PREFIX}_format
+		WORKING_DIRECTORY "${DERAMMO_NPM_RUN_DIR}"
+		COMMAND npm run format ${DERAMMO_NPM_WORKSPACE_ARGS} --if-present --silent
+		COMMENT "formatting npm package in '${DERAMMO_NPM_RUN_DIR}/${DERAMMO_NPM_WORKSPACE}'"
+	)
+	derammo_format_target(${DERAMMO_NPM_PREFIX}_format)
 endfunction()
 
 # declare an npm package in the current source directory, generating its
@@ -192,6 +197,7 @@ function(derammo_npm)
 		)
 		# the install above extracts locally built tarballs, so they must be built first
 		derammo_npm_tarball_dependencies("${CMAKE_CURRENT_SOURCE_DIR}" ${DERAMMO_CURRENT_TARGET_PREFIX}_npm)
+		derammo_npm_format_target(${DERAMMO_CURRENT_TARGET_PREFIX} "${CMAKE_CURRENT_SOURCE_DIR}" "")
 		add_test(NAME ${DERAMMO_CURRENT_TARGET_PREFIX}_npm
 			COMMAND npm run test --if-present --silent
 			WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
@@ -267,6 +273,7 @@ function(derammo_workspaces_auto)
 			COMMENT "building npm package '${DERAMMO_NPM_MEMBER_NAME}' in '${DERAMMO_NPM_MEMBER_DIR}'"
 		)
 		add_dependencies(${DERAMMO_TARGET_PREFIX}_npm ${DERAMMO_CURRENT_TARGET_PREFIX}_node_modules)
+		derammo_npm_format_target(${DERAMMO_TARGET_PREFIX} "${CMAKE_CURRENT_SOURCE_DIR}" "${DERAMMO_NPM_MEMBER_RELATIVE}")
 		# the workspace install extracts every member's locally built tarballs, so
 		# they must be built before it, not just before the member that uses them
 		derammo_npm_tarball_dependencies("${DERAMMO_NPM_MEMBER_DIR}"

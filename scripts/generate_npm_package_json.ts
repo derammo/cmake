@@ -103,7 +103,9 @@ class PackageJsonGenerator {
     }
 
     // an unchanged output keeps its timestamp, so build systems that depend on
-    // it do not reconfigure just because another build tree was configured
+    // it do not reconfigure just because another build tree was configured;
+    // nothing is printed for it, so a configure log names only the files that
+    // changed
     const outputPath = path.join(packageDirectory, OUTPUT_FILENAME);
     const content = canonicalPackageJson(result) + "\n";
     if (fs.existsSync(outputPath) && fs.readFileSync(outputPath, "utf8") === content) {
@@ -115,6 +117,7 @@ class PackageJsonGenerator {
     fs.rmSync(outputPath, { force: true });
     fs.writeFileSync(outputPath, content);
     fs.chmodSync(outputPath, 0o444);
+    console.log(`generated ${OUTPUT_FILENAME} in '${packageDirectory}'`);
   }
 
   private loadTemplate(templatePath: string): JsonObject {

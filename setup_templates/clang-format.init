@@ -1,0 +1,19 @@
+# clang-format 21
+BasedOnStyle: LLVM
+BreakBeforeBraces: Allman
+ColumnLimit: 120
+IndentWidth: 2
+NamespaceIndentation: All
+PointerAlignment: Right
+ReferenceAlignment: Right
+AccessModifierOffset: -2
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+InsertBraces: true
+InsertNewlineAtEOF: true
+IncludeBlocks: Preserve
+SortIncludes: CaseSensitive
+FixNamespaceComments: false
+BreakTemplateDeclarations: Yes
+ReflowComments: IndentOnly

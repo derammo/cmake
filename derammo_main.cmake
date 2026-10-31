@@ -66,6 +66,13 @@ include("derammo_sources")
 # utilities
 include("derammo_utilities")
 
+# strict compilation, formatting and file length checks for C and C++ targets
+include("derammo_lint")
+
+# the `format` target over every registered formatter; after the providers
+# that register from a deferred finalize, so that its own finalize runs last
+include("derammo_format")
+
 # helper to add standard sets of sources, which may be from scanning or manual
 function(derammo_add_sources DERAMMO_TARGET)
     # add sources to target
@@ -85,4 +92,7 @@ macro(derammo_add_library_auto DERAMMO_TARGET DERAMMO_LIBRARY_TYPE)
     # automatically add all sources
     derammo_scan_library_sources(${DERAMMO_TARGET} ${DERAMMO_LIBRARY_TYPE})
     derammo_add_sources(${DERAMMO_TARGET})
+
+    # strict flags and code quality tests
+    derammo_lint_target(${DERAMMO_TARGET})
 endmacro()
