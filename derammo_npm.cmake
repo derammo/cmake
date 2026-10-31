@@ -351,6 +351,58 @@ function(derammo_workspaces_auto)
 	set(DERAMMO_NPM_WORKSPACE_MEMBER_DIRS "${DERAMMO_NPM_MEMBER_DIRS}" PARENT_SCOPE)
 endfunction()
 
+# the npm_update target runs `npm update` in every npm root: each workspace
+# root over itself and its members, and each package outside a workspace;
+# that moves every dependency to the newest version its range allows, which
+# an install never does on its own; npm_outdated runs the same with
+# --dry-run, which prints what the update would change and changes nothing;
+# `make npm-update` and `make npm-outdated` at the source root run them;
+# deferred to the end of configure, when every root has registered
+function(derammo_npm_update_finalize)
+	get_property(DERAMMO_NPM_ROOTS GLOBAL PROPERTY DERAMMO_NPM_WORKSPACE_ROOTS)
+	get_property(DERAMMO_NPM_PACKAGES GLOBAL PROPERTY DERAMMO_NPM_PACKAGES)
+	set(DERAMMO_NPM_STANDALONE_PACKAGES "")
+	foreach(DERAMMO_NPM_PACKAGE IN LISTS DERAMMO_NPM_PACKAGES)
+		set(DERAMMO_NPM_IN_WORKSPACE FALSE)
+		foreach(DERAMMO_NPM_ROOT IN LISTS DERAMMO_NPM_ROOTS)
+			file(RELATIVE_PATH DERAMMO_NPM_RELATIVE "${DERAMMO_NPM_ROOT}" "${DERAMMO_NPM_PACKAGE}")
+			if(NOT DERAMMO_NPM_RELATIVE MATCHES "^\\.\\.")
+				set(DERAMMO_NPM_IN_WORKSPACE TRUE)
+			endif()
+		endforeach()
+		if(NOT DERAMMO_NPM_IN_WORKSPACE)
+			list(APPEND DERAMMO_NPM_STANDALONE_PACKAGES "${DERAMMO_NPM_PACKAGE}")
+		endif()
+	endforeach()
+
+	foreach(DERAMMO_NPM_MODE update outdated)
+		if(DERAMMO_NPM_MODE STREQUAL "outdated")
+			set(DERAMMO_NPM_DRY_RUN --dry-run)
+		else()
+			set(DERAMMO_NPM_DRY_RUN "")
+		endif()
+		set(DERAMMO_NPM_COMMANDS "")
+		# a workspace has one lock file, so an update at its root covers the
+		# members; the --workspaces flag would only add a spurious warning per
+		# member about a missing workspace folder
+		foreach(DERAMMO_NPM_ROOT IN LISTS DERAMMO_NPM_ROOTS)
+			list(APPEND DERAMMO_NPM_COMMANDS
+				COMMAND ${CMAKE_COMMAND} -E chdir "${DERAMMO_NPM_ROOT}" npm update ${DERAMMO_NPM_DRY_RUN})
+		endforeach()
+		foreach(DERAMMO_NPM_PACKAGE IN LISTS DERAMMO_NPM_STANDALONE_PACKAGES)
+			list(APPEND DERAMMO_NPM_COMMANDS
+				COMMAND ${CMAKE_COMMAND} -E chdir "${DERAMMO_NPM_PACKAGE}" npm update ${DERAMMO_NPM_DRY_RUN})
+		endforeach()
+		add_custom_target(npm_${DERAMMO_NPM_MODE}
+			${DERAMMO_NPM_COMMANDS}
+			COMMENT "npm ${DERAMMO_NPM_MODE}: every npm root, to the newest its ranges allow"
+			VERBATIM
+		)
+	endforeach()
+endfunction()
+
+cmake_language(DEFER DIRECTORY ${CMAKE_SOURCE_DIR} CALL derammo_npm_update_finalize)
+
 # define the npm_squeaky target, which removes the installed dependencies and
 # build outputs (node_modules, dist, tsconfig*.tsbuildinfo) of every npm package
 # and workspace root registered so far; not in ALL, the source root's

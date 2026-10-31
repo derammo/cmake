@@ -34,6 +34,8 @@ then edit the top level CMakeLists.txt to add your project name, vendor, and con
 | `test-<label>`   | like `test`, restricted to one provider label, e.g. `make test-npm`, `make test-jest`                                      |
 | `lint`           | build Debug (configure only with `DERAMMO_SKIP_BUILD=1`), then run the `lint` tests in parallel, see code quality below    |
 | `format`         | rewrite the sources in place with every formatter the build registered, in the first configured tree, see formatting below |
+| `npm-update`     | move every npm dependency of every npm root to the newest version its range allows, see npm packages below                 |
+| `npm-outdated`   | print what `npm-update` would change, changing nothing                                                                     |
 | `clean`          | run `make clean` inside any existing `<Platform>/{Release,RelWithDebInfo,Debug}` build dir (keeps the dirs themselves)     |
 | `squeaky`        | delete `<Platform>/` and `Windows/` entirely, removing all build artifacts                                                 |
 | `info`           | print the detected platform and the inputs main.make watches for regeneration                                              |
@@ -68,6 +70,8 @@ The Visual Studio generator writes no compile database, so there configure disab
 
 A package whose `package.json` names a dependency as `file:<path>.tgz` consumes a tarball that `npm pack` left in the directory of the package that built it (the `_package_template_tarball.json` template packs on every build and keeps a `<name>-current.tgz` link to the result). The lock file records which build of the tarball the consumer installed, and `npm install` keeps to it, as with any dependency; moving to a newer build is `npm update`. This build always wants the latest locally built packages, so it orders the consumer after the provider and runs `npm update <names>` for the consumer's tarball dependencies as the first step of its build target, visible as a plain command in the generated build; for a workspace member this runs from the workspace root with `--workspace <member>`, since npm run in a member directory would treat the member as a project of its own. The package manifests carry no `prebuild` script for this.
 
+Registry dependencies move only on request: `make npm-update` runs `npm update` in every npm root the build knows, each workspace root over itself and its members and each package outside a workspace, taking every dependency to the newest version its declared range allows; `make npm-outdated` prints what that would change, as `npm update --dry-run`, and changes nothing. The ranges live in the package templates; the lock files record what the update chose.
+
 ## test providers
 
 All testing goes through CTest. Each kind of test support registers the tests it finds with `add_test()` and labels them with the provider name, so the generated `test` target (and `make test` / `cmake\test.cmd`) runs everything, and `ctest -L <label>` or `make test-<label>` runs one kind. `ctest --print-labels` in a build directory lists what a project registered.
@@ -94,7 +98,7 @@ The per-test XML comes from properties of the tests themselves, so any ctest inv
 
 The build tree's `format` target rewrites in place every source the build knows how to format, and the root `make format` builds it. Providers register the way test providers register with ctest: a provider that can format a language creates its own target and calls `derammo_format_target(<target>)` (see `derammo_format.cmake`); the deferred finalize makes `format` depend on every registered target, and creates `format` even when nothing registered. `format` is the one reserved name; a project does not define its own. The providers so far: the C and C++ lint set through the `clang-format` target, when `.clang-format` is present and a matching tool was found (see code quality below), and every npm package through its `<prefix>_format` target, which runs the package's `format` script if it has one, from the workspace root for a workspace member so hoisted dependencies resolve.
 
-`make format` runs in the build tree of `DERAMMO_FORMAT_CONFIG`: the first of Release, Debug and RelWithDebInfo that is configured, or Debug when none is, configured first when it is missing or stale, so a switch file or a tool that appeared since the last configure is seen; set it as `make format DERAMMO_FORMAT_CONFIG=Debug`.
+`make format`, like `make npm-update`, runs in the build tree of `DERAMMO_TOOL_CONFIG`: the first of Release, Debug and RelWithDebInfo that is configured, or Debug when none is, configured first when it is missing or stale, so a switch file or a tool that appeared since the last configure is seen; set it as `make format DERAMMO_TOOL_CONFIG=Debug`.
 
 ### the format hook
 

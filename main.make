@@ -35,7 +35,7 @@ else
 DERAMMO_LINT_PREREQUISITES := debug
 endif
 
-.PHONY: all clean squeaky configure release package docker relWithDebInfo debug probe info test trace lint format
+.PHONY: all clean squeaky configure release package docker relWithDebInfo debug probe info test trace lint format npm-update npm-outdated
 all: release $(DERAMMO_ALL_TARGETS)
 
 clean: 
@@ -99,20 +99,35 @@ test-%: debug
 lint: $(DERAMMO_LINT_PREREQUISITES)
 	cd $(DERAMMO_PLATFORM)/Debug && ctest --output-on-failure --output-junit junit/ctest.xml -L lint -j $(DERAMMO_LINT_PARALLEL_LEVEL)
 
-# the configuration whose build tree `make format` runs in: the first of
-# Release, Debug and RelWithDebInfo that is configured, so formatting never
-# configures a second tree, and Debug when none is; the lint set and the tool
-# are the same in every configuration; set as `make format DERAMMO_FORMAT_CONFIG=Debug`
-DERAMMO_FORMAT_CONFIG ?= $(firstword $(patsubst $(DERAMMO_PLATFORM)/%/Makefile,%,$(wildcard $(DERAMMO_PLATFORM)/Release/Makefile $(DERAMMO_PLATFORM)/Debug/Makefile $(DERAMMO_PLATFORM)/RelWithDebInfo/Makefile)) Debug)
+# the configuration whose build tree the tool targets (format, npm-update)
+# run in: the first of Release, Debug and RelWithDebInfo that is configured,
+# so a tool never configures a second tree, and Debug when none is; what the
+# tools act on is the same in every configuration; set as
+# `make format DERAMMO_TOOL_CONFIG=Debug`
+DERAMMO_TOOL_CONFIG ?= $(firstword $(patsubst $(DERAMMO_PLATFORM)/%/Makefile,%,$(wildcard $(DERAMMO_PLATFORM)/Release/Makefile $(DERAMMO_PLATFORM)/Debug/Makefile $(DERAMMO_PLATFORM)/RelWithDebInfo/Makefile)) Debug)
 
 # rewrite the sources in place with every formatter the build registered
 # (clang-format for the C and C++ lint set when .clang-format is present and
 # a matching tool was found, the format script of every npm package, ...),
-# through the build tree of DERAMMO_FORMAT_CONFIG, configured first when it
+# through the build tree of DERAMMO_TOOL_CONFIG, configured first when it
 # is missing or stale (a switch file or a tool that appeared since makes it
 # stale); see derammo_format.cmake for how a provider registers
-format: $(DERAMMO_PLATFORM)/$(DERAMMO_FORMAT_CONFIG) $(DERAMMO_PLATFORM)/$(DERAMMO_FORMAT_CONFIG)/Makefile
-	cd $(DERAMMO_PLATFORM)/$(DERAMMO_FORMAT_CONFIG) && make format
+format: $(DERAMMO_PLATFORM)/$(DERAMMO_TOOL_CONFIG) $(DERAMMO_PLATFORM)/$(DERAMMO_TOOL_CONFIG)/Makefile
+	cd $(DERAMMO_PLATFORM)/$(DERAMMO_TOOL_CONFIG) && make format
+
+# move every npm dependency to the newest version its range allows, in every
+# npm root the build knows: each workspace root with its members, and each
+# package outside a workspace; an install never does this on its own, it keeps
+# what the lock file records; npm-outdated prints what npm-update would change
+# and changes nothing
+#
+# the build tree targets these call exist only when the project includes the
+# optional npm module (derammo_npm.cmake); without it, the build tree's make
+# reports that it has no rule to make the target, and nothing runs
+npm-update: $(DERAMMO_PLATFORM)/$(DERAMMO_TOOL_CONFIG) $(DERAMMO_PLATFORM)/$(DERAMMO_TOOL_CONFIG)/Makefile
+	cd $(DERAMMO_PLATFORM)/$(DERAMMO_TOOL_CONFIG) && make npm_update
+npm-outdated: $(DERAMMO_PLATFORM)/$(DERAMMO_TOOL_CONFIG) $(DERAMMO_PLATFORM)/$(DERAMMO_TOOL_CONFIG)/Makefile
+	cd $(DERAMMO_PLATFORM)/$(DERAMMO_TOOL_CONFIG) && make npm_outdated
 
 # XXX: testRelease
 
