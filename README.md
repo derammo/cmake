@@ -64,6 +64,10 @@ In particular, **there is no `make test` on Windows** — use `cmake\test.cmd` i
 
 The Visual Studio generator writes no compile database, so there configure disables the clang-tidy check with `tidy: disabled (the Visual Studio <version> generator writes no compile database)`, which `-DDERAMMO_LINT_REQUIRED=ON` makes fatal; the `lint_format` and `lint_size` tests run as usual (see code quality below).
 
+## npm packages
+
+A package whose `package.json` names a dependency as `file:<path>.tgz` consumes a tarball that `npm pack` left in the directory of the package that built it (the `_package_template_tarball.json` template packs on every build and keeps a `<name>-current.tgz` link to the result). The lock file records which build of the tarball the consumer installed, and `npm install` keeps to it, as with any dependency; moving to a newer build is `npm update`. This build always wants the latest locally built packages, so it orders the consumer after the provider and runs `npm update <names>` for the consumer's tarball dependencies as the first step of its build target, visible as a plain command in the generated build; for a workspace member this runs from the workspace root with `--workspace <member>`, since npm run in a member directory would treat the member as a project of its own. The package manifests carry no `prebuild` script for this.
+
 ## test providers
 
 All testing goes through CTest. Each kind of test support registers the tests it finds with `add_test()` and labels them with the provider name, so the generated `test` target (and `make test` / `cmake\test.cmd`) runs everything, and `ctest -L <label>` or `make test-<label>` runs one kind. `ctest --print-labels` in a build directory lists what a project registered.

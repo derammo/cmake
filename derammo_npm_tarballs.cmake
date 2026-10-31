@@ -1,9 +1,8 @@
 # locally built tarball dependencies of an npm package: a dependency whose
 # version is file:<path>.tgz names a tarball that `npm pack` left in the
-# directory of the package that built it
-#
-# shared by the configure-time driver (derammo_npm.cmake) and the build-time
-# install script (scripts/npm_install.cmake), so both see the same dependencies
+# directory of the package that built it; derammo_npm.cmake orders the
+# consumer's build after the provider's and updates the dependency by name
+# before the consumer builds
 include_guard()
 
 # derammo_npm_tarball_dependency_list(<package-dir> <names-var> <tarballs-var>)

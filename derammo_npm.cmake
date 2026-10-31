@@ -5,8 +5,7 @@ include("${CMAKE_CURRENT_LIST_DIR}/derammo_npm_tarballs.cmake")
 # template expansion script, run directly by node without compilation
 set(DERAMMO_NPM_GENERATOR "${CMAKE_SOURCE_DIR}/cmake/scripts/generate_npm_package_json.ts")
 
-# `npm install` with the lines that only say nothing happened filtered out;
-# locally built tarball dependencies are updated first
+# `npm install` with the lines that only say nothing happened filtered out
 set(DERAMMO_NPM_INSTALL ${CMAKE_COMMAND} -P "${CMAKE_SOURCE_DIR}/cmake/scripts/npm_install.cmake")
 
 # internal: set DERAMMO_TARGET_PREFIX in the caller's scope to the given
@@ -189,8 +188,18 @@ function(derammo_npm)
 
 	if(NOT DEFINED DERAMMO_NPM_WORKSPACE_ROOT)
 		derammo_calculate_current_target_prefix()
+		# the lock file records which build of a tarball the package installed
+		# and `npm install` keeps to it; moving to a newer build is `npm update`,
+		# as for any dependency, and this build always wants the latest locally
+		# built one, so the tarball dependencies are updated by name first
+		derammo_npm_tarball_dependency_list("${CMAKE_CURRENT_SOURCE_DIR}" DERAMMO_NPM_TARBALL_NAMES DERAMMO_NPM_TARBALLS)
+		set(DERAMMO_NPM_UPDATE_COMMANDS "")
+		if(DERAMMO_NPM_TARBALL_NAMES)
+			list(APPEND DERAMMO_NPM_UPDATE_COMMANDS COMMAND npm update ${DERAMMO_NPM_TARBALL_NAMES})
+		endif()
 		add_custom_target(${DERAMMO_CURRENT_TARGET_PREFIX}_npm ALL
 			WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+			${DERAMMO_NPM_UPDATE_COMMANDS}
 			COMMAND ${DERAMMO_NPM_INSTALL}
 			COMMAND npm run build --if-present --silent
 			COMMENT "building npm package in '${CMAKE_CURRENT_SOURCE_DIR}'"
@@ -267,8 +276,21 @@ function(derammo_workspaces_auto)
 
 		file(RELATIVE_PATH DERAMMO_NPM_MEMBER_RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "${DERAMMO_NPM_MEMBER_DIR}")
 		derammo_calculate_target_prefix("${DERAMMO_NPM_MEMBER_DIR}")
+		# the lock file records which build of a tarball the member installed
+		# and `npm install` keeps to it; moving to a newer build is `npm update`,
+		# as for any dependency, and this build always wants the latest locally
+		# built one, so the member's tarball dependencies are updated by name
+		# before its build; from the workspace root, since npm run in a member
+		# directory would treat the member as a project of its own
+		derammo_npm_tarball_dependency_list("${DERAMMO_NPM_MEMBER_DIR}" DERAMMO_NPM_TARBALL_NAMES DERAMMO_NPM_TARBALLS)
+		set(DERAMMO_NPM_UPDATE_COMMANDS "")
+		if(DERAMMO_NPM_TARBALL_NAMES)
+			list(APPEND DERAMMO_NPM_UPDATE_COMMANDS
+				COMMAND npm update --workspace "${DERAMMO_NPM_MEMBER_RELATIVE}" ${DERAMMO_NPM_TARBALL_NAMES})
+		endif()
 		add_custom_target(${DERAMMO_TARGET_PREFIX}_npm
 			WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+			${DERAMMO_NPM_UPDATE_COMMANDS}
 			COMMAND npm run build --workspace "${DERAMMO_NPM_MEMBER_RELATIVE}" --if-present --silent
 			COMMENT "building npm package '${DERAMMO_NPM_MEMBER_NAME}' in '${DERAMMO_NPM_MEMBER_DIR}'"
 		)
