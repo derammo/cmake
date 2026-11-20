@@ -37,12 +37,14 @@ then edit the top level CMakeLists.txt to add your project name, vendor, and con
 | `npm-update`     | move every npm dependency of every npm root to the newest version its range allows, see npm packages below                 |
 | `npm-outdated`   | print what `npm-update` would change, changing nothing                                                                     |
 | `clean`          | run `make clean` inside any existing `<Platform>/{Release,RelWithDebInfo,Debug}` build dir (keeps the dirs themselves)     |
-| `squeaky`        | delete `<Platform>/` and `Windows/` entirely, removing all build artifacts                                                 |
+| `squeaky`        | delete `<Platform>/`, the `build` link and `Windows/` entirely, removing all build artifacts                               |
 | `info`           | print the detected platform and the inputs main.make watches for regeneration                                              |
 | `probe`          | print just the detected platform                                                                                           |
 | `trace`          | re-run cmake with `--trace` into `<Platform>/Debug` for debugging CMake logic                                              |
 
 `<Platform>` is the output of `uname -s` (`Linux`, `Darwin`, etc.), so build trees for multiple platforms can coexist in the same source tree.
+
+Every target that configures a build tree also keeps a symbolic link `build` to `<Platform>` at the project root, so a path such as `build/Debug/compile_commands.json` names the current platform's tree without spelling the platform; editor settings can point at the compile database there. A project that has its own file or directory called `build` keeps it, and gets no link.
 
 Several of the per-platform paths can also be invoked directly:
 

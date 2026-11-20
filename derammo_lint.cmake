@@ -26,10 +26,10 @@ include_guard()
 # source root is named `thirdparty`; third party files get no tests, and a
 # registered target's own `thirdparty` directory is a SYSTEM include, so the
 # strict warnings do not fire in vendored headers
-
-# clang-tidy reads the compile database; the Visual Studio and Xcode
-# generators write none, so _derammo_lint_check disables tidy under those
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+#
+# clang-tidy reads the compile database that derammo_main.cmake switches on;
+# the Visual Studio and Xcode generators write none, so _derammo_lint_check
+# disables tidy under those
 
 option(DERAMMO_LINT_REQUIRED "fail configure when a lint switch file is present but its tool is missing or of another major" OFF)
 option(DERAMMO_LINT_STRICT "compile registered targets with the strict warnings as errors" ON)

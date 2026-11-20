@@ -48,6 +48,7 @@ clean:
 # tree are not ours to touch
 squeaky: clean $(DERAMMO_SQUEAKY_TARGETS)
 	rm -rf $(DERAMMO_PLATFORM)
+	if [ -L build ] ; then rm build ; fi
 	rm -rf node_modules cmake/scripts/node_modules
 
 configure: $(DERAMMO_PLATFORM)/Release \
@@ -141,8 +142,16 @@ $(DERAMMO_PLATFORM)/Debug:
 $(DERAMMO_PLATFORM)/RelWithDebInfo:
 	mkdir -p $@
 
-# recompile cmake if necessary
-$(DERAMMO_PLATFORM)/%/Makefile: $(DERAMMO_CMAKE_SOURCES) $(DERAMMO_CMAKE_LISTS) $(DERAMMO_LINT_INPUTS) Makefile
+# the platform's build trees under a name that does not depend on the platform,
+# so that editor settings can name a path such as
+# build/Debug/compile_commands.json; a project that has a file or directory of
+# its own called build keeps it, since the rule only runs when nothing is there
+build:
+	ln -sfn $(DERAMMO_PLATFORM) $@
+
+# recompile cmake if necessary; the link is an order-only prerequisite, so it
+# is made when missing but never causes a configure
+$(DERAMMO_PLATFORM)/%/Makefile: $(DERAMMO_CMAKE_SOURCES) $(DERAMMO_CMAKE_LISTS) $(DERAMMO_LINT_INPUTS) Makefile | build
 	# on platforms where we use make to update the cmake files, we only support g++/gcc as compilers
 	# which is aliased on Darwin to use the preferred compiler there also
 	cmake -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -S . -B $(DERAMMO_PLATFORM)/$* -DCMAKE_BUILD_TYPE=$* -DDERAMMO_RELATIVE_BINARY_DIR=$(DERAMMO_PLATFORM)/$*

@@ -15,6 +15,11 @@ else()
     set(CMAKE_CXX_EXTENSIONS OFF)
 endif()
 
+# every build tree gets a compile database (compile_commands.json) naming the
+# exact command of each translation unit, for editors and for clang-tidy; the
+# Visual Studio and Xcode generators write none
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # modules may be loaded from here
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH};${CMAKE_SOURCE_DIR}/cmake)
 message(STATUS "module path is: ${CMAKE_MODULE_PATH}")
