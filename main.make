@@ -7,6 +7,12 @@
 # MAKEFLAGS is inherited by every sub-make, so this silences all of them
 MAKEFLAGS += --no-print-directory
 
+# `make QUICK=1` skips npm package builds whose recorded inputs are unchanged
+# (see derammo_npm.cmake); the build commands read QUICK from the
+# environment, which `QUICK=1 make` reaches on its own, so exporting makes
+# the command line form equivalent
+export QUICK
+
 # inventory
 DERAMMO_PLATFORM := $(strip $(shell uname -s))
 DERAMMO_CMAKE_LISTS := $(shell find . -name "CMakeLists.txt") cmake/main.make

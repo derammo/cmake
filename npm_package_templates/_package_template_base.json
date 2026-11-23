@@ -6,6 +6,6 @@
     "licenses"
   ],
   "scripts": {
-    "clean": "rm -rf ./dist tsconfig.tsbuildinfo tsconfig.*.tsbuildinfo *.quickstamp.json"
+    "clean": "rm -rf ./dist tsconfig.tsbuildinfo tsconfig.*.tsbuildinfo"
   }
 }

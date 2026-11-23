@@ -1,28 +1,38 @@
 #!/usr/bin/env node
-// Runs the build steps of an npm package, or skips all of them when the
-// package is up to date. Used by the build targets of derammo_npm.cmake when
-// the QUICK cmake option is on. Run directly by node without compilation
-// (type stripping).
+// Runs the build steps of an npm package and records the completed build in
+// a stamp file; with QUICK set in the environment, skips all of the steps
+// when the package is up to date. Used by the build targets of
+// derammo_npm.cmake. Run directly by node without compilation (type
+// stripping).
 //
-//   node npm_quick_build.ts <package-dir> <step...> [+++ <step...>]...
+//   node npm_quick_build.ts <package-dir> <stamp-file> <step...> [+++ <step...>]...
 //
 // Each `+++` separates one command line from the next; the steps run in order
 // in the current working directory, stopping at the first failure, exactly as
-// the plain build target would run them.
+// the build target would run them as plain commands.
+//
+// QUICK in the environment (any value except empty or 0) turns the check on;
+// without it the steps always run. The stamp, written when the steps
+// complete in either mode so a full build keeps it fresh, belongs in the
+// build tree: its modification time is the time of the last completed build,
+// and its content records the dependency state installed then, as the hash
+// of the nearest package-lock.json and of each tarball dependency.
 //
 // The package is up to date when the build script chain in its package.json
 // leads to a single `tsc -p <config>` invocation whose incremental build info
-// exists, every input is older than the stamp recorded here after the last
-// completed build, and the recorded outputs still exist. The inputs are the
-// files listed in the build info, the tsconfig extends chain, package.json
-// itself, the nearest package-lock.json, and every file:...tgz tarball
-// dependency. The stamp, not the build info, is the baseline because tsc
-// leaves the build info untouched when a rebuild changes nothing. Anything
-// unrecognized, unreadable, or missing makes the package stale, so an
-// analysis failure costs a build that may not have been needed; an input that
-// the build info does not record (for example a tool invoked by an
-// unrecognized build script) is invisible here, which is why QUICK is off by
-// default.
+// exists, every input is older than the stamp of the last completed build,
+// the dependency state matches the stamp, and the recorded outputs still
+// exist. The inputs are the files listed in the build info, the tsconfig
+// extends chain, and package.json itself. The stamp, not the build info, is
+// the mtime baseline because tsc leaves the build info untouched when a
+// rebuild changes nothing; the dependency state is compared by content
+// because npm freshens the lock file on every install and `npm pack`
+// freshens the tarballs on every provider build, reproducing the same bytes
+// when nothing changed. Anything unrecognized, unreadable, or missing makes
+// the package stale, so an analysis failure costs a build that may not have
+// been needed; an input that none of the records can show (for example a
+// tool invoked by an unrecognized build script) is invisible here, which is
+// why skipping is opt-in per build.
 
 import { spawnSync } from "node:child_process";
 import * as crypto from "node:crypto";
@@ -120,6 +130,16 @@ function readJsonFile(filePath: string, allowComments: boolean): JsonObject | un
 function modifiedTime(filePath: string): number | undefined {
   const stats = fs.statSync(filePath, { throwIfNoEntry: false });
   return stats?.mtimeMs;
+}
+
+function fileHash(filePath: string): string | undefined {
+  let content: Buffer;
+  try {
+    content = fs.readFileSync(filePath);
+  } catch {
+    return undefined;
+  }
+  return crypto.createHash("sha256").update(content).digest("hex");
 }
 
 // the single tsc invocation a recognized build script chain runs
@@ -327,11 +347,12 @@ function readBuildInfo(buildInfoPath: string): BuildInfoInputs | undefined {
 // stamp that later checks measure against once a build completes
 class QuickCheck {
   private readonly packageDir: string;
+  private readonly stampPath: string;
   private readonly manifest: JsonObject | undefined;
-  private stampPath: string | undefined;
 
-  constructor(packageDir: string) {
+  constructor(packageDir: string, stampPath: string) {
     this.packageDir = packageDir;
+    this.stampPath = stampPath;
     this.manifest = readJsonFile(path.join(packageDir, "package.json"), false);
   }
 
@@ -357,7 +378,6 @@ class QuickCheck {
       return `${this.relative(invocation.configPath)} does not enable incremental build info`;
     }
     const buildInfoPath = chain.tsBuildInfoFile ?? this.defaultBuildInfoPath(invocation.configPath);
-    this.stampPath = this.deriveStampPath(buildInfoPath);
     const buildInfoTime = modifiedTime(buildInfoPath);
     if (buildInfoTime === undefined) {
       return `${this.relative(buildInfoPath)} does not exist yet`;
@@ -366,11 +386,14 @@ class QuickCheck {
     if (stampTime === undefined) {
       return "no completed build is stamped yet";
     }
+    const stamp = readJsonFile(this.stampPath, false);
+    if (stamp === undefined) {
+      return "the stamp of the last completed build is unreadable";
+    }
     // npm install freshens the lock file's timestamp even when it changes
     // nothing, and the workspace install runs on every build, so the lock
     // is compared by content against the hash the stamp recorded
-    const stamp = readJsonFile(this.stampPath, false);
-    if (this.lockFileHash() !== stamp?.["lockFileHash"]) {
+    if (this.lockFileHash() !== stamp["lockFileHash"]) {
       return "the nearest package-lock.json changed";
     }
     if (buildInfoTime > stampTime) {
@@ -384,23 +407,24 @@ class QuickCheck {
       this.changedInputReason([path.join(this.packageDir, "package.json"), ...chain.configFiles], stampTime) ??
       this.listedInputReason(buildInfo.fileNames, stampTime) ??
       this.newSourceReason(buildInfo.fileNames, stampTime) ??
-      this.tarballDependencyReason(stampTime) ??
+      this.tarballDependencyReason(stamp) ??
       this.missingOutputReason(buildInfo, invocation)
     );
   }
 
-  // the build ran to completion, so inputs older than now are accounted for
+  // the build ran to completion, so inputs older than now are accounted for;
+  // called after full builds too, so the quick state is fresh either way
   writeStamp(): void {
-    if (this.stampPath === undefined) {
-      return;
-    }
     const content = {
-      comment: "stamp of the last npm package build completed through npm_quick_build.ts",
-      built: new Date().toISOString(),
+      comment:
+        "last completed npm package build, recorded by cmake/scripts/npm_quick_build.ts; " +
+        "the modification time of this file is the build time",
       lockFileHash: this.lockFileHash() ?? null,
+      tarballHashes: this.tarballHashes(),
     };
     try {
-      fs.writeFileSync(this.stampPath, JSON.stringify(content) + "\n");
+      fs.mkdirSync(path.dirname(this.stampPath), { recursive: true });
+      fs.writeFileSync(this.stampPath, JSON.stringify(content, null, 2) + "\n");
     } catch (error) {
       console.error(`${MESSAGE_INDENT}could not write ${this.stampPath}: ${(error as Error).message}`);
     }
@@ -415,15 +439,6 @@ class QuickCheck {
   private defaultBuildInfoPath(configPath: string): string {
     const withoutExtension = configPath.endsWith(".json") ? configPath.slice(0, -".json".length) : configPath;
     return withoutExtension + ".tsbuildinfo";
-  }
-
-  // a JSON file next to the build info it belongs to; the gitignore, clean
-  // and squeaky patterns remove *.quickstamp.json wherever they remove
-  // tsbuildinfo files
-  private deriveStampPath(buildInfoPath: string): string {
-    const suffix = ".tsbuildinfo";
-    const base = buildInfoPath.endsWith(suffix) ? buildInfoPath.slice(0, -suffix.length) : buildInfoPath;
-    return base + ".quickstamp.json";
   }
 
   private changedInputReason(filePaths: string[], stampTime: number): string | null {
@@ -549,8 +564,26 @@ class QuickCheck {
   // a dependency whose version is file:<path>.tgz names a tarball a sibling
   // package build left behind; npm sets the modification times of extracted
   // files to a fixed date, so only the tarball itself shows that the
-  // dependency moved
-  private tarballDependencyReason(stampTime: number): string | null {
+  // dependency moved, and `npm pack` freshens its timestamp while
+  // reproducing the same bytes when nothing changed, so the comparison is
+  // by content against the hash the stamp recorded
+  private tarballDependencyReason(stamp: JsonObject): string | null {
+    const recorded = stamp["tarballHashes"];
+    for (const [name, tarballPath] of this.tarballDependencies()) {
+      const hash = fileHash(tarballPath);
+      if (hash === undefined) {
+        return `tarball dependency ${name} is missing`;
+      }
+      if (!isJsonObject(recorded) || recorded[name] !== hash) {
+        return `tarball dependency ${name} changed`;
+      }
+    }
+    return null;
+  }
+
+  // the file:<path>.tgz dependencies of the package, as [name, absolute path]
+  private tarballDependencies(): [string, string][] {
+    const results: [string, string][] = [];
     for (const kind of ["dependencies", "devDependencies"]) {
       const dependencies = this.manifest?.[kind];
       if (!isJsonObject(dependencies)) {
@@ -562,20 +595,23 @@ class QuickCheck {
           continue;
         }
         const match = version.match(/^file:(.*\.tgz)$/);
-        if (match === null) {
-          continue;
-        }
-        const tarballPath = path.resolve(this.packageDir, match[1]);
-        const time = modifiedTime(tarballPath);
-        if (time === undefined) {
-          return `tarball dependency ${name} is missing`;
-        }
-        if (time > stampTime) {
-          return `tarball dependency ${name} is newer than the last build`;
+        if (match !== null) {
+          results.push([name, path.resolve(this.packageDir, match[1])]);
         }
       }
     }
-    return null;
+    return results;
+  }
+
+  private tarballHashes(): { [name: string]: string } {
+    const hashes: { [name: string]: string } = {};
+    for (const [name, tarballPath] of this.tarballDependencies()) {
+      const hash = fileHash(tarballPath);
+      if (hash !== undefined) {
+        hashes[name] = hash;
+      }
+    }
+    return hashes;
   }
 
   private missingOutputReason(buildInfo: BuildInfoInputs, invocation: TscInvocation): string | null {
@@ -640,17 +676,19 @@ class StepRunner {
 
 interface ParsedArguments {
   packageDir: string;
+  stampPath: string;
   steps: string[][];
 }
 
 function parseArguments(argv: string[]): ParsedArguments | undefined {
-  if (argv.length === 0) {
+  if (argv.length < 2) {
     return undefined;
   }
   const packageDir = path.resolve(argv[0]);
+  const stampPath = path.resolve(argv[1]);
   const steps: string[][] = [];
   let current: string[] = [];
-  for (const argument of argv.slice(1)) {
+  for (const argument of argv.slice(2)) {
     if (argument === STEP_SEPARATOR) {
       if (current.length > 0) {
         steps.push(current);
@@ -666,28 +704,38 @@ function parseArguments(argv: string[]): ParsedArguments | undefined {
   if (steps.length === 0) {
     return undefined;
   }
-  return { packageDir, steps };
+  return { packageDir, stampPath, steps };
+}
+
+// QUICK comes from the environment of the build invocation, so each build
+// chooses: `QUICK=1 make` skips up to date packages, plain `make` builds
+// everything and refreshes the stamps
+function quickRequested(): boolean {
+  const value = process.env["QUICK"];
+  return value !== undefined && value !== "" && value !== "0";
 }
 
 function main(): void {
   const parsed = parseArguments(process.argv.slice(2));
   if (parsed === undefined) {
-    console.error(`usage: node npm_quick_build.ts <package-dir> <step...> [${STEP_SEPARATOR} <step...>]...`);
+    console.error(`usage: node npm_quick_build.ts <package-dir> <stamp-file> <step...> [${STEP_SEPARATOR} <step...>]...`);
     process.exit(2);
   }
-  const check = new QuickCheck(parsed.packageDir);
-  let reason: string;
-  try {
-    const stale = check.staleReason();
-    if (stale === null) {
-      console.log(`${MESSAGE_INDENT}${check.describePackage()} is up to date, skipping build`);
-      return;
+  const check = new QuickCheck(parsed.packageDir, parsed.stampPath);
+  if (quickRequested()) {
+    let reason: string;
+    try {
+      const stale = check.staleReason();
+      if (stale === null) {
+        console.log(`${MESSAGE_INDENT}${check.describePackage()} is up to date, skipping build`);
+        return;
+      }
+      reason = stale;
+    } catch (error) {
+      reason = `quick check failed: ${(error as Error).message}`;
     }
-    reason = stale;
-  } catch (error) {
-    reason = `quick check failed: ${(error as Error).message}`;
+    console.log(`${MESSAGE_INDENT}building ${check.describePackage()}: ${reason}`);
   }
-  console.log(`${MESSAGE_INDENT}building ${check.describePackage()}: ${reason}`);
   const status = new StepRunner(parsed.steps).run();
   if (status !== 0) {
     process.exit(status);
