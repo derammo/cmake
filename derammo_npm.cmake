@@ -8,6 +8,19 @@ set(DERAMMO_NPM_GENERATOR "${CMAKE_SOURCE_DIR}/cmake/scripts/generate_npm_packag
 # `npm install` with the lines that only say nothing happened filtered out
 set(DERAMMO_NPM_INSTALL ${CMAKE_COMMAND} -P "${CMAKE_SOURCE_DIR}/cmake/scripts/npm_install.cmake")
 
+# with QUICK on, every package build target runs its steps through this
+# script, which skips all of them when the package's tsc build info shows no
+# input newer than the last completed build, tarball dependencies included;
+# an input the build info does not record is invisible to that check, so the
+# skip can be wrong when some indirect input changed, and the option is off
+# by default: it trades that risk for fast iteration, and is not for release
+# or CI builds
+option(QUICK "skip npm package builds whose recorded inputs are unchanged" OFF)
+set(DERAMMO_NPM_QUICK_BUILD "${CMAKE_SOURCE_DIR}/cmake/scripts/npm_quick_build.ts")
+if(QUICK)
+	message(STATUS "npm quick build: on (QUICK); npm packages with unchanged recorded inputs are skipped")
+endif()
+
 # internal: set DERAMMO_TARGET_PREFIX in the caller's scope to the given
 # source directory's path relative to the source root, with slashes replaced
 # by underscores so it is usable as a target name prefix; the source root
@@ -155,6 +168,31 @@ function(derammo_npm_tarball_dependencies DERAMMO_NPM_PACKAGE_DIR)
 	endforeach()
 endfunction()
 
+# internal: expand build steps, given as command words with `+++` between
+# steps, into COMMAND arguments for add_custom_target; with QUICK on the
+# steps instead run through the quick build script, which skips all of them
+# when no recorded input of the package in DERAMMO_NPM_PACKAGE_DIR changed
+# since its last completed build
+#
+# derammo_npm_build_commands(<package-dir> <out-var> <step-word|+++>...)
+function(derammo_npm_build_commands DERAMMO_NPM_PACKAGE_DIR DERAMMO_NPM_COMMANDS_VAR)
+	if(QUICK)
+		set(DERAMMO_NPM_COMMANDS COMMAND node "${DERAMMO_NPM_QUICK_BUILD}" "${DERAMMO_NPM_PACKAGE_DIR}" ${ARGN})
+	else()
+		set(DERAMMO_NPM_COMMANDS "")
+		set(DERAMMO_NPM_KEYWORD COMMAND)
+		foreach(DERAMMO_NPM_WORD IN LISTS ARGN)
+			if(DERAMMO_NPM_WORD STREQUAL "+++")
+				set(DERAMMO_NPM_KEYWORD COMMAND)
+			else()
+				list(APPEND DERAMMO_NPM_COMMANDS ${DERAMMO_NPM_KEYWORD} "${DERAMMO_NPM_WORD}")
+				set(DERAMMO_NPM_KEYWORD "")
+			endif()
+		endforeach()
+	endif()
+	set(${DERAMMO_NPM_COMMANDS_VAR} "${DERAMMO_NPM_COMMANDS}" PARENT_SCOPE)
+endfunction()
+
 # internal: create the target <prefix>_format that runs the package's `format`
 # script, if it has one, from DERAMMO_NPM_RUN_DIR, and register it with the
 # build tree's `format` target; DERAMMO_NPM_WORKSPACE is the member's path
@@ -193,15 +231,15 @@ function(derammo_npm)
 		# as for any dependency, and this build always wants the latest locally
 		# built one, so the tarball dependencies are updated by name first
 		derammo_npm_tarball_dependency_list("${CMAKE_CURRENT_SOURCE_DIR}" DERAMMO_NPM_TARBALL_NAMES DERAMMO_NPM_TARBALLS)
-		set(DERAMMO_NPM_UPDATE_COMMANDS "")
+		set(DERAMMO_NPM_STEPS "")
 		if(DERAMMO_NPM_TARBALL_NAMES)
-			list(APPEND DERAMMO_NPM_UPDATE_COMMANDS COMMAND npm update ${DERAMMO_NPM_TARBALL_NAMES})
+			list(APPEND DERAMMO_NPM_STEPS npm update ${DERAMMO_NPM_TARBALL_NAMES} +++)
 		endif()
+		list(APPEND DERAMMO_NPM_STEPS ${DERAMMO_NPM_INSTALL} +++ npm run build --if-present --silent)
+		derammo_npm_build_commands("${CMAKE_CURRENT_SOURCE_DIR}" DERAMMO_NPM_BUILD_COMMANDS ${DERAMMO_NPM_STEPS})
 		add_custom_target(${DERAMMO_CURRENT_TARGET_PREFIX}_npm ALL
 			WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-			${DERAMMO_NPM_UPDATE_COMMANDS}
-			COMMAND ${DERAMMO_NPM_INSTALL}
-			COMMAND npm run build --if-present --silent
+			${DERAMMO_NPM_BUILD_COMMANDS}
 			COMMENT "building npm package in '${CMAKE_CURRENT_SOURCE_DIR}'"
 		)
 		# the install above extracts locally built tarballs, so they must be built first
@@ -283,15 +321,16 @@ function(derammo_workspaces_auto)
 		# before its build; from the workspace root, since npm run in a member
 		# directory would treat the member as a project of its own
 		derammo_npm_tarball_dependency_list("${DERAMMO_NPM_MEMBER_DIR}" DERAMMO_NPM_TARBALL_NAMES DERAMMO_NPM_TARBALLS)
-		set(DERAMMO_NPM_UPDATE_COMMANDS "")
+		set(DERAMMO_NPM_STEPS "")
 		if(DERAMMO_NPM_TARBALL_NAMES)
-			list(APPEND DERAMMO_NPM_UPDATE_COMMANDS
-				COMMAND npm update --workspace "${DERAMMO_NPM_MEMBER_RELATIVE}" ${DERAMMO_NPM_TARBALL_NAMES})
+			list(APPEND DERAMMO_NPM_STEPS
+				npm update --workspace "${DERAMMO_NPM_MEMBER_RELATIVE}" ${DERAMMO_NPM_TARBALL_NAMES} +++)
 		endif()
+		list(APPEND DERAMMO_NPM_STEPS npm run build --workspace "${DERAMMO_NPM_MEMBER_RELATIVE}" --if-present --silent)
+		derammo_npm_build_commands("${DERAMMO_NPM_MEMBER_DIR}" DERAMMO_NPM_BUILD_COMMANDS ${DERAMMO_NPM_STEPS})
 		add_custom_target(${DERAMMO_TARGET_PREFIX}_npm
 			WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-			${DERAMMO_NPM_UPDATE_COMMANDS}
-			COMMAND npm run build --workspace "${DERAMMO_NPM_MEMBER_RELATIVE}" --if-present --silent
+			${DERAMMO_NPM_BUILD_COMMANDS}
 			COMMENT "building npm package '${DERAMMO_NPM_MEMBER_NAME}' in '${DERAMMO_NPM_MEMBER_DIR}'"
 		)
 		add_dependencies(${DERAMMO_TARGET_PREFIX}_npm ${DERAMMO_CURRENT_TARGET_PREFIX}_node_modules)
