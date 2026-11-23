@@ -417,12 +417,13 @@ class QuickCheck {
     return withoutExtension + ".tsbuildinfo";
   }
 
-  // named so the gitignore and cleanup patterns covering tsconfig.*.tsbuildinfo
-  // files also cover the stamp
+  // a JSON file next to the build info it belongs to; the gitignore, clean
+  // and squeaky patterns remove *.quickstamp.json wherever they remove
+  // tsbuildinfo files
   private deriveStampPath(buildInfoPath: string): string {
     const suffix = ".tsbuildinfo";
     const base = buildInfoPath.endsWith(suffix) ? buildInfoPath.slice(0, -suffix.length) : buildInfoPath;
-    return base + ".quick" + suffix;
+    return base + ".quickstamp.json";
   }
 
   private changedInputReason(filePaths: string[], stampTime: number): string | null {

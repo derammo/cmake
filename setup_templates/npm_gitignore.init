@@ -10,6 +10,7 @@ junit.xml
 # build state
 tsconfig.tsbuildinfo
 tsconfig.*.tsbuildinfo
+*.quickstamp.json
 
 # _tarball output
 *-*-current.tgz
