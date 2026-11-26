@@ -1,2 +1,9 @@
 # make file for all platforms that are posix-like (i.e. not windows native via Visual Studio, run cmake\make.cmd for that platform)
 include cmake/main.make
+
+# fresh clone support: when the include above is missing, make runs this rule
+# and restarts with the submodules in place; precious, so a failed update does
+# not make make delete the file out of the cmake submodule's work tree
+.PRECIOUS: cmake/main.make
+cmake/main.make:
+	git submodule update --init --recursive
