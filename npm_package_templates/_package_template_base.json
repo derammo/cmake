@@ -2,6 +2,7 @@
   "type": "module",
   "files": [
     "dist",
+    "!dist/**/*.tsbuildinfo",
     "LICENSE.txt",
     "licenses"
   ],
