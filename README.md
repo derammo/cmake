@@ -91,7 +91,7 @@ A VS Code extension is an npm package that is packaged as a VSIX instead of a ta
 | target          | what it does                                                                                                         |
 |-----------------|----------------------------------------------------------------------------------------------------------------------|
 | `<prefix>_vsix` | part of the default build: runs the package's `package:vsix` script, leaving `<publisher>.<name>-<version>.vsix` next to the extension |
-| `<prefix>_dev`  | installs that VSIX into vscode under a unique timestamped version, so vscode treats every install as an update (POSIX only) |
+| `<prefix>_dev`  | installs that VSIX into vscode under a unique timestamped version, so vscode treats every install as an update |
 
 The `package:vsix` script reads the ignore list to package with (`cmake/vsix_vscodeignore`) and the output file name from its environment, as `DERAMMO_VSIX_IGNORE_FILE` and `DERAMMO_VSIX_FILE`, which the build sets; run by hand without them it stops with a message. An extension with a step of its own before packaging defines a `prepackage:vsix` script. The build tree's `dev` target installs every declared extension. `derammo_vsix_dist(<directory>)`, called from the root `CMakeLists.txt` after the last extension is declared, adds a `vsix_dist` target to the default build that copies every VSIX into that directory.
 

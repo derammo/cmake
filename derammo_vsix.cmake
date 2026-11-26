@@ -10,7 +10,7 @@ include("${CMAKE_CURRENT_LIST_DIR}/derammo_npm.cmake")
 # reads its location from the environment under the same name
 set(DERAMMO_VSIX_IGNORE_FILE "${CMAKE_CURRENT_LIST_DIR}/vsix_vscodeignore")
 
-set(DERAMMO_VSIX_DEV_INSTALL "${CMAKE_CURRENT_LIST_DIR}/scripts/vsix_dev_install.bash")
+set(DERAMMO_VSIX_DEV_INSTALL "${CMAKE_CURRENT_LIST_DIR}/scripts/vsix_dev_install.cmake")
 
 # declare a VS Code extension in the current source directory: a derammo_npm()
 # package plus
@@ -51,7 +51,10 @@ function(derammo_vsix)
 
 	add_custom_target(${DERAMMO_CURRENT_TARGET_PREFIX}_dev
 		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-		COMMAND /bin/bash "${DERAMMO_VSIX_DEV_INSTALL}" "${DERAMMO_VSIX_FILE}"
+		COMMAND ${CMAKE_COMMAND}
+			"-DDERAMMO_VSIX_FILE=${CMAKE_CURRENT_SOURCE_DIR}/${DERAMMO_VSIX_FILE}"
+			"-DDERAMMO_VSIX_STAGE_DIR=${CMAKE_CURRENT_BINARY_DIR}/derammo_vsix_dev"
+			-P "${DERAMMO_VSIX_DEV_INSTALL}"
 		COMMENT "installing ${DERAMMO_VSIX_FILE} into vscode"
 		VERBATIM
 	)
