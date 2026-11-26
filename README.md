@@ -90,6 +90,7 @@ All testing goes through CTest. Each kind of test support registers the tests it
 |-----------------------|---------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------|
 | `derammo_gtest.cmake` | one test per Google Test case, discovered from each `gtest/` target                                                 | `gtest`                                                                          |
 | `derammo_npm.cmake`   | `npm run test` per package: standalone packages register themselves, a workspace root registers one test per member | `npm`, plus the framework found in `devDependencies` (`vitest`, `jest`, `mocha`) |
+| `derammo_npm.cmake`   | `npm run lint` per package as `<prefix>_eslint`, registered the same way; a package with no `lint` script passes    | `lint`, `eslint`                                                                 |
 | `derammo_maven.cmake` | `mvn test` for each `derammo_maven_build()`                                                                         | `maven`                                                                          |
 | `derammo_lint.cmake`  | `lint_format/<path>`, `lint_tidy/<path>`, `lint_size/<path>` per C and C++ file, see code quality below             | `lint`                                                                           |
 

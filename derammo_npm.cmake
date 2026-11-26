@@ -201,6 +201,26 @@ function(derammo_npm_format_target DERAMMO_NPM_PREFIX DERAMMO_NPM_RUN_DIR DERAMM
 	derammo_format_target(${DERAMMO_NPM_PREFIX}_format)
 endfunction()
 
+# internal: register the test <prefix>_eslint that runs the package's `lint`
+# script, if it has one, labelled lint, like the C and C++ checks, so
+# `make lint` runs it, and eslint, so `make test-eslint` runs just these;
+# DERAMMO_NPM_RUN_DIR and DERAMMO_NPM_WORKSPACE as for
+# derammo_npm_format_target; the script needs the package's dependencies
+# installed, which the build does
+function(derammo_npm_lint_test DERAMMO_NPM_PREFIX DERAMMO_NPM_RUN_DIR DERAMMO_NPM_WORKSPACE)
+	if(DERAMMO_NPM_WORKSPACE STREQUAL "")
+		set(DERAMMO_NPM_WORKSPACE_ARGS "")
+	else()
+		set(DERAMMO_NPM_WORKSPACE_ARGS --workspace "${DERAMMO_NPM_WORKSPACE}")
+	endif()
+	add_test(NAME ${DERAMMO_NPM_PREFIX}_eslint
+		COMMAND npm run lint ${DERAMMO_NPM_WORKSPACE_ARGS} --if-present --silent
+		WORKING_DIRECTORY "${DERAMMO_NPM_RUN_DIR}"
+	)
+	set_tests_properties(${DERAMMO_NPM_PREFIX}_eslint PROPERTIES LABELS "lint;eslint")
+	derammo_test_output(${DERAMMO_NPM_PREFIX}_eslint)
+endfunction()
+
 # declare an npm package in the current source directory, generating its
 # package.json from _package_template.json at configure time; inside a workspace
 # the workspace root builds and tests all packages, so a standalone package
@@ -234,6 +254,7 @@ function(derammo_npm)
 		# the install above extracts locally built tarballs, so they must be built first
 		derammo_npm_tarball_dependencies("${CMAKE_CURRENT_SOURCE_DIR}" ${DERAMMO_CURRENT_TARGET_PREFIX}_npm)
 		derammo_npm_format_target(${DERAMMO_CURRENT_TARGET_PREFIX} "${CMAKE_CURRENT_SOURCE_DIR}" "")
+		derammo_npm_lint_test(${DERAMMO_CURRENT_TARGET_PREFIX} "${CMAKE_CURRENT_SOURCE_DIR}" "")
 		add_test(NAME ${DERAMMO_CURRENT_TARGET_PREFIX}_npm
 			COMMAND npm run test --if-present --silent
 			WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
@@ -326,6 +347,7 @@ function(derammo_workspaces_auto)
 		)
 		add_dependencies(${DERAMMO_TARGET_PREFIX}_npm ${DERAMMO_CURRENT_TARGET_PREFIX}_node_modules)
 		derammo_npm_format_target(${DERAMMO_TARGET_PREFIX} "${CMAKE_CURRENT_SOURCE_DIR}" "${DERAMMO_NPM_MEMBER_RELATIVE}")
+		derammo_npm_lint_test(${DERAMMO_TARGET_PREFIX} "${CMAKE_CURRENT_SOURCE_DIR}" "${DERAMMO_NPM_MEMBER_RELATIVE}")
 		# the workspace install extracts every member's locally built tarballs, so
 		# they must be built before it, not just before the member that uses them
 		derammo_npm_tarball_dependencies("${DERAMMO_NPM_MEMBER_DIR}"

@@ -1,0 +1,10 @@
+*.*
+src/**
+test/**
+dist/test/**
+dist/vscodetest/**
+**/*.map
+**/*.d.ts
+.*/**
+!LICENSE.txt
+!resources/**
