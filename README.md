@@ -82,6 +82,19 @@ The check follows the package's `build` script chain to the single `tsc -p <conf
 
 An input that none of those records can show — for example an indirect dependency whose refresh only an unconditional `npm install` would surface — is invisible to the check, so a quick build can wrongly skip; that is the trade for fast iteration, and why skipping is opt-in per build and not for release or CI builds. The shared install of a workspace root still runs on every build; only the member builds are skipped.
 
+### VS Code extensions
+
+A VS Code extension is an npm package that is packaged as a VSIX instead of a tarball. The support is optional: the root `CMakeLists.txt` includes `cmake/derammo_vsix.cmake` after `cmake/derammo_npm.cmake`, the extension's `CMakeLists.txt` calls `derammo_vsix()` in place of `derammo_npm()`, and its `_package_template.json` extends `_package_template_vsix.json` and sets its own `publisher`. An extension cannot be a member of an npm workspace, since `vsce` cannot package a workspace member together with its dependencies; it is a standalone package that takes locally built packages as tarballs.
+
+`derammo_vsix()` adds two targets to those of the npm package:
+
+| target          | what it does                                                                                                         |
+|-----------------|----------------------------------------------------------------------------------------------------------------------|
+| `<prefix>_vsix` | part of the default build: runs the package's `package:vsix` script, leaving `<publisher>.<name>-<version>.vsix` next to the extension |
+| `<prefix>_dev`  | installs that VSIX into vscode under a unique timestamped version, so vscode treats every install as an update (POSIX only) |
+
+The `package:vsix` script reads the ignore list to package with (`cmake/vsix_vscodeignore`) and the output file name from its environment, as `DERAMMO_VSIX_IGNORE_FILE` and `DERAMMO_VSIX_FILE`, which the build sets; run by hand without them it stops with a message. An extension with a step of its own before packaging defines a `prepackage:vsix` script. The build tree's `dev` target installs every declared extension. `derammo_vsix_dist(<directory>)`, called from the root `CMakeLists.txt` after the last extension is declared, adds a `vsix_dist` target to the default build that copies every VSIX into that directory.
+
 ## test providers
 
 All testing goes through CTest. Each kind of test support registers the tests it finds with `add_test()` and labels them with the provider name, so the generated `test` target (and `make test` / `cmake\test.cmd`) runs everything, and `ctest -L <label>` or `make test-<label>` runs one kind. `ctest --print-labels` in a build directory lists what a project registered.
