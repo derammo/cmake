@@ -4,7 +4,7 @@
 # e.g. make -f ../cmake/setup.make executable
 
 # initialize a new project to use this cmake system via a "cmake" folder in that project's root
-root: Makefile CMakeLists.txt .gitignore
+root: Makefile CMakeLists.txt .gitignore .claude/rules/derammo-cmake.md
 
 # location of this makefile's folder, so npm targets can be run from subdirectories at any depth
 DERAMMO_SETUP_DIR := $(dir $(lastword $(MAKEFILE_LIST)))
@@ -163,6 +163,13 @@ CMakeLists.txt: | cmake/setup_templates/CMakeLists.init
 	echo >> $@
 	echo "# packaging support" >> $@
 	echo "include(CPack)" >> $@
+
+# what an agent working in the project is told about this build system: a
+# rule file that imports the instructions of the modules in use, so they
+# change with the modules
+.claude/rules/derammo-cmake.md: | cmake/setup_templates/claude_rule.init
+	mkdir -p $(dir $@)
+	cp cmake/setup_templates/claude_rule.init $@
 
 # default gitignore file
 .gitignore: | cmake/setup_templates/gitignore.init

@@ -30,7 +30,8 @@ then edit the top level CMakeLists.txt to add your project name, vendor, and con
 | `configure`      | configure all build types, without building, to be used for development of cmake files                                     |
 | `package`        | build Release, then run CPack (`make package`) in the Release build dir                                                    |
 | `docker`         | build Release, then run the `docker` custom target if the project defines one (non-fatal if missing)                       |
-| `test`           | build Debug, then run every registered test through `ctest --output-on-failure` (gtest, npm, maven, ... see below)         |
+| `test`           | build Debug, then run every registered test through `ctest --output-on-failure` (gtest, npm, maven, ... see below); on a tree that is clean before and after the build, also write `test-report.txt` and keep the JUnit XML under `.derammo/test-history`|
+| `test-report.txt`| the same run on its own: fails when the tree is not clean before or after the build, succeeds when the report is written   |
 | `test-<label>`   | like `test`, restricted to one provider label, e.g. `make test-npm`, `make test-jest`                                      |
 | `lint`           | build Debug (configure only with `DERAMMO_SKIP_BUILD=1`), then run the `lint` tests in parallel, see code quality below    |
 | `format`         | rewrite the sources in place with every formatter the build registered, in the first configured tree, see formatting below |
@@ -190,7 +191,7 @@ to create a pretty decent default configuration for a library in the current dir
 
 | target       | run from                                   | initializes                                                                                                                                                                  |
 |--------------|--------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `root`       | project root containing the `cmake` folder | a new project root: `Makefile`, top-level `CMakeLists.txt` with `add_subdirectory()` entries and CPack support, and a `.gitignore` (merged with any existing one)            |
+| `root`       | project root containing the `cmake` folder | a new project root: `Makefile`, top-level `CMakeLists.txt` with `add_subdirectory()` entries and CPack support, a `.gitignore` (merged with any existing one), and `.claude/rules/derammo-cmake.md`, which gives agents `doc/agent_instructions.md` of these modules            |
 | `library`    | subfolder of the root                      | a shared library target: `CMakeLists.txt` plus `sources.cmake` listing local sources (PUBLIC), `include/` headers (INTERFACE), and `src/` files (PRIVATE)                    |
 | `static`     | subfolder of the root                      | a static library target (runs `library` with `DERAMMO_LIBRARY_TYPE=STATIC`)                                                                                                  |
 | `executable` | subfolder of the root                      | an executable target: `CMakeLists.txt` plus `sources.cmake` listing local sources (PUBLIC) and `src/` files (PRIVATE)                                                        |
