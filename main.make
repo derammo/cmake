@@ -107,7 +107,9 @@ DERAMMO_TEST_HISTORY := .derammo/test-history/$(DERAMMO_PLATFORM)
 DERAMMO_TREE_IS_CLEAN = { derammo_changes=$$(git status --porcelain 2>/dev/null) && [ -z "$$derammo_changes" ]; }
 
 # runs the tests and exits with the status of ctest; with the shell variable
-# derammo_report set, as a report run
+# derammo_report set, as a report run; with derammo_report_asked set as well,
+# the report is what was asked for, so writing it is success whatever the
+# tests did
 define DERAMMO_RUN_TESTS
 if [ -n "$$derammo_report" ]; then rm -rf $(DERAMMO_JUNIT_DIR) && mkdir -p $(DERAMMO_JUNIT_DIR) || exit; fi; \
 ( cd $(DERAMMO_PLATFORM)/Debug && ctest $(DERAMMO_CTEST_REPORT) ); derammo_status=$$?; \
@@ -115,6 +117,7 @@ if [ -n "$$derammo_report" ]; then \
 	node cmake/scripts/junit_report.ts $(DERAMMO_JUNIT_DIR) $(DERAMMO_TEST_HISTORY)/$$(git rev-parse HEAD) $(DERAMMO_TEST_REPORT) || exit; \
 	echo "$(DERAMMO_TEST_REPORT) written for $$(git rev-parse --short HEAD)"; \
 fi; \
+if [ -n "$$derammo_report_asked" ]; then exit 0; fi; \
 exit $$derammo_status
 endef
 
@@ -129,7 +132,8 @@ test:
 	$(DERAMMO_RUN_TESTS)
 
 # the report run on its own: fails without running a test when the tree is
-# not clean, or when the build leaves it not clean
+# not clean, or when the build leaves it not clean; succeeds when the report
+# is written, failing tests included
 $(DERAMMO_TEST_REPORT):
 	@if ! $(DERAMMO_TREE_IS_CLEAN); then \
 		echo "$@: uncommitted changes, commit them first:" >&2; git status --short >&2; exit 1; \
@@ -138,7 +142,7 @@ $(DERAMMO_TEST_REPORT):
 	if ! $(DERAMMO_TREE_IS_CLEAN); then \
 		echo "$@: the build changed these, commit them and run again:" >&2; git status --short >&2; exit 1; \
 	fi; \
-	derammo_report=1; \
+	derammo_report=1; derammo_report_asked=1; \
 	$(DERAMMO_RUN_TESTS)
 
 # run only the tests of one provider, e.g. `make test-npm`; `ctest --print-labels`
