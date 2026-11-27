@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// Prints one line per test from the JUnit XML files of a test run: the
-// result, then what was tested. The lines are sorted by what was tested, so
-// the reports of two runs can be compared line by line. Run directly by node
-// without compilation (type stripping).
+// Prints one line per test from the JUnit XML files of a test run: FAIL, skip
+// or nothing for a test that passed, then what was tested. The lines are
+// sorted by what was tested, so the reports of two runs can be compared line
+// by line. Run directly by node without compilation (type stripping).
 //
 //   node junit_report.ts <junit-dir>
 //
@@ -92,7 +92,9 @@ function main(argv: readonly string[]): number {
 	}
 	const keys = [...lines.keys()].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
 	for (const key of keys) {
-		console.log(`${lines.get(key)}  ${key}`);
+		const result = lines.get(key);
+		// a test that passed has an empty first column, so the others stand out
+		console.log(`${result === "pass" ? "    " : result}  ${key}`);
 	}
 	return 0;
 }
