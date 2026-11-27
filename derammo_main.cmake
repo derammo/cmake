@@ -43,7 +43,7 @@ enable_testing()
 # passes the same path to ctest
 set(DERAMMO_JUNIT_DIR "${CMAKE_BINARY_DIR}/junit")
 file(MAKE_DIRECTORY "${DERAMMO_JUNIT_DIR}")
-set(CMAKE_CTEST_ARGUMENTS --output-on-failure --output-junit "${DERAMMO_JUNIT_DIR}/ctest.xml")
+set(CMAKE_CTEST_ARGUMENTS --output-on-failure --test-output-size-passed 1 --output-junit "${DERAMMO_JUNIT_DIR}/ctest.xml")
 
 # helper for providers whose runners honor the NO_COLOR convention: plain
 # output for the captured log and the JUnit XML path for this test

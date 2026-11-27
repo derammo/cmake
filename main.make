@@ -88,23 +88,28 @@ info:
 	@echo $(DERAMMO_CMAKE_SOURCES)
 	@echo $(DERAMMO_LINT_INPUTS)
 
+# how ctest reports: the output of a failed test is shown and kept, the
+# output of a passed test is dropped from the JUnit file (1 byte is the least
+# ctest keeps; 0 means no limit)
+DERAMMO_CTEST_REPORT := --output-on-failure --test-output-size-passed 1 --output-junit junit/ctest.xml
+
 # every test provider registers with ctest under a label naming the provider
 # (gtest, npm, vitest, jest, maven, ...), so this runs all of them; JUnit XML
 # for each test and for the run as a whole lands in the junit folder of the
 # build directory, matching CMAKE_CTEST_ARGUMENTS in derammo_main.cmake
 test: debug
-	cd $(DERAMMO_PLATFORM)/Debug && ctest --output-on-failure --output-junit junit/ctest.xml
+	cd $(DERAMMO_PLATFORM)/Debug && ctest $(DERAMMO_CTEST_REPORT)
 
 # run only the tests of one provider, e.g. `make test-npm`; `ctest --print-labels`
 # in the build directory lists what is registered
 test-%: debug
-	cd $(DERAMMO_PLATFORM)/Debug && ctest --output-on-failure --output-junit junit/ctest.xml -L $*
+	cd $(DERAMMO_PLATFORM)/Debug && ctest $(DERAMMO_CTEST_REPORT) -L $*
 
 # the C++ lint checks (format conformance, clang-tidy, file length) are ctests
 # labelled lint; the same tests as `make test-lint`, run DERAMMO_LINT_PARALLEL_LEVEL
 # at a time, after building Debug unless DERAMMO_SKIP_BUILD is set
 lint: $(DERAMMO_LINT_PREREQUISITES)
-	cd $(DERAMMO_PLATFORM)/Debug && ctest --output-on-failure --output-junit junit/ctest.xml -L lint -j $(DERAMMO_LINT_PARALLEL_LEVEL)
+	cd $(DERAMMO_PLATFORM)/Debug && ctest $(DERAMMO_CTEST_REPORT) -L lint -j $(DERAMMO_LINT_PARALLEL_LEVEL)
 
 # the configuration whose build tree the tool targets (format, npm-update)
 # run in: the first of Release, Debug and RelWithDebInfo that is configured,
