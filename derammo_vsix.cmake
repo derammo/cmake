@@ -11,6 +11,7 @@ include("${CMAKE_CURRENT_LIST_DIR}/derammo_npm.cmake")
 set(DERAMMO_VSIX_IGNORE_FILE "${CMAKE_CURRENT_LIST_DIR}/vsix_vscodeignore")
 
 set(DERAMMO_VSIX_DEV_INSTALL "${CMAKE_CURRENT_LIST_DIR}/scripts/vsix_dev_install.cmake")
+set(DERAMMO_VSIX_COPY_IF_CONTENT_DIFFERS "${CMAKE_CURRENT_LIST_DIR}/scripts/zip_copy_if_content_differs.ts")
 
 # declare a VS Code extension in the current source directory: a derammo_npm()
 # package plus
@@ -68,15 +69,18 @@ endfunction()
 
 # define the vsix_dist target (ALL), which copies the VSIX of every extension
 # declared so far into DERAMMO_VSIX_DIST_DIR; call from the root
-# CMakeLists.txt after the last add_subdirectory() that declares extensions
+# CMakeLists.txt after the last add_subdirectory() that declares extensions;
+# packaging records the time of the build inside a VSIX, so one that was only
+# built again differs as a file, and it is copied only when its content differs
 function(derammo_vsix_dist DERAMMO_VSIX_DIST_DIR)
 	get_property(DERAMMO_VSIX_FILES GLOBAL PROPERTY DERAMMO_VSIX_FILES)
 	get_property(DERAMMO_VSIX_TARGETS GLOBAL PROPERTY DERAMMO_VSIX_TARGETS)
 
 	set(DERAMMO_VSIX_COPY_COMMANDS "")
 	foreach(DERAMMO_VSIX_FILE IN LISTS DERAMMO_VSIX_FILES)
+		cmake_path(GET DERAMMO_VSIX_FILE FILENAME DERAMMO_VSIX_FILE_NAME)
 		list(APPEND DERAMMO_VSIX_COPY_COMMANDS
-			COMMAND ${CMAKE_COMMAND} -E copy_if_different "${DERAMMO_VSIX_FILE}" "${DERAMMO_VSIX_DIST_DIR}/")
+			COMMAND node "${DERAMMO_VSIX_COPY_IF_CONTENT_DIFFERS}" "${DERAMMO_VSIX_FILE}" "${DERAMMO_VSIX_DIST_DIR}/${DERAMMO_VSIX_FILE_NAME}")
 	endforeach()
 	add_custom_target(vsix_dist ALL
 		${DERAMMO_VSIX_COPY_COMMANDS}
