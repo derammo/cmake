@@ -41,7 +41,7 @@ else
 DERAMMO_LINT_PREREQUISITES := debug
 endif
 
-.PHONY: all clean squeaky configure release package docker relWithDebInfo debug probe info test trace lint format npm-update npm-outdated
+.PHONY: all clean squeaky configure release package docker relWithDebInfo debug probe info test trace lint format npm-update npm-outdated test-report.txt
 all: release $(DERAMMO_ALL_TARGETS)
 
 clean: 
@@ -88,17 +88,58 @@ info:
 	@echo $(DERAMMO_CMAKE_SOURCES)
 	@echo $(DERAMMO_LINT_INPUTS)
 
-# how ctest reports: the output of a failed test is shown and kept, the
-# output of a passed test is dropped from the JUnit file (1 byte is the least
-# ctest keeps; 0 means no limit)
-DERAMMO_CTEST_REPORT := --output-on-failure --test-output-size-passed 1 --output-junit junit/ctest.xml
+# how ctest reports: the output of a failed test is shown, and JUnit XML for
+# each test and for the run as a whole lands in the junit folder of the build
+# directory, matching CMAKE_CTEST_ARGUMENTS in derammo_main.cmake
+DERAMMO_CTEST_REPORT := --output-on-failure --output-junit junit/ctest.xml
+
+# a report run of the tests records the state of one commit: it starts from
+# an empty junit folder, keeps a copy of the JUnit XML without the output
+# that is not worth keeping under the commit hash, outside git and outside
+# the build directory, and writes one line per test to the report at the
+# source root (see scripts/junit_report.ts)
+DERAMMO_JUNIT_DIR := $(DERAMMO_PLATFORM)/Debug/junit
+DERAMMO_TEST_REPORT := test-report.txt
+DERAMMO_TEST_HISTORY := .derammo/test-history/$(DERAMMO_PLATFORM)
+
+# true when nothing here or in a submodule is uncommitted or untracked; a
+# folder that git does not manage is never clean
+DERAMMO_TREE_IS_CLEAN = { derammo_changes=$$(git status --porcelain 2>/dev/null) && [ -z "$$derammo_changes" ]; }
+
+# runs the tests and exits with the status of ctest; with the shell variable
+# derammo_report set, as a report run
+define DERAMMO_RUN_TESTS
+if [ -n "$$derammo_report" ]; then rm -rf $(DERAMMO_JUNIT_DIR) && mkdir -p $(DERAMMO_JUNIT_DIR) || exit; fi; \
+( cd $(DERAMMO_PLATFORM)/Debug && ctest $(DERAMMO_CTEST_REPORT) ); derammo_status=$$?; \
+if [ -n "$$derammo_report" ]; then \
+	node cmake/scripts/junit_report.ts $(DERAMMO_JUNIT_DIR) $(DERAMMO_TEST_HISTORY)/$$(git rev-parse HEAD) $(DERAMMO_TEST_REPORT) || exit; \
+	echo "$(DERAMMO_TEST_REPORT) written for $$(git rev-parse --short HEAD)"; \
+fi; \
+exit $$derammo_status
+endef
 
 # every test provider registers with ctest under a label naming the provider
-# (gtest, npm, vitest, jest, maven, ...), so this runs all of them; JUnit XML
-# for each test and for the run as a whole lands in the junit folder of the
-# build directory, matching CMAKE_CTEST_ARGUMENTS in derammo_main.cmake
-test: debug
-	cd $(DERAMMO_PLATFORM)/Debug && ctest $(DERAMMO_CTEST_REPORT)
+# (gtest, npm, vitest, jest, maven, ...), so this runs all of them; when the
+# tree is clean before the build and still clean after it, and node is there
+# to write the report, this is a report run
+test:
+	@if $(DERAMMO_TREE_IS_CLEAN) && command -v node >/dev/null; then derammo_report=1; else derammo_report=; fi; \
+	$(MAKE) debug || exit; \
+	if [ -n "$$derammo_report" ] && ! $(DERAMMO_TREE_IS_CLEAN); then derammo_report=; fi; \
+	$(DERAMMO_RUN_TESTS)
+
+# the report run on its own: fails without running a test when the tree is
+# not clean, or when the build leaves it not clean
+$(DERAMMO_TEST_REPORT):
+	@if ! $(DERAMMO_TREE_IS_CLEAN); then \
+		echo "$@: uncommitted changes, commit them first:" >&2; git status --short >&2; exit 1; \
+	fi; \
+	$(MAKE) debug || exit; \
+	if ! $(DERAMMO_TREE_IS_CLEAN); then \
+		echo "$@: the build changed these, commit them and run again:" >&2; git status --short >&2; exit 1; \
+	fi; \
+	derammo_report=1; \
+	$(DERAMMO_RUN_TESTS)
 
 # run only the tests of one provider, e.g. `make test-npm`; `ctest --print-labels`
 # in the build directory lists what is registered
