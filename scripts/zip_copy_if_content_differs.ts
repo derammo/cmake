@@ -10,8 +10,9 @@
 //
 // The archives' entries are compared by name, size and CRC first, so an added
 // or removed file is a difference; when those agree, the content of each pair
-// of entries decides.
+// of entries decides. One line on standard output says what was done.
 import { closeSync, copyFileSync, existsSync, fstatSync, openSync, readSync, utimesSync } from "node:fs";
+import { basename } from "node:path";
 import { inflateRawSync } from "node:zlib";
 
 const END_OF_CENTRAL_DIRECTORY = 0x06054b50;
@@ -171,11 +172,17 @@ function main(argv: readonly string[]): number {
 		console.error("usage: node zip_copy_if_content_differs.ts <new-archive> <destination-archive>");
 		return 2;
 	}
-	if (existsSync(destinationPath) && sameContent(newPath, destinationPath)) {
+	const name = basename(destinationPath);
+	if (!existsSync(destinationPath)) {
+		copyFileSync(newPath, destinationPath);
+		console.log(`copied ${name} (new)`);
+	} else if (sameContent(newPath, destinationPath)) {
 		const now = new Date();
 		utimesSync(destinationPath, now, now);
+		console.log(`reused ${name} (content unchanged)`);
 	} else {
 		copyFileSync(newPath, destinationPath);
+		console.log(`copied ${name} (content changed)`);
 	}
 	return 0;
 }
