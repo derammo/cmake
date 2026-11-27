@@ -1,17 +1,17 @@
 # Working in a project that is built with these cmake modules
 
-Build and test through `make` at the project root.
+Build and test through `make` at the cmake root. The cmake root is the folder that contains the `./cmake/` submodule, not the `cmake` folder itself.
 
 | When                      | Run                                             | cwd                |
 |---------------------------|-------------------------------------------------|--------------------|
-| iterating on a change     | `make debug`                                    | project root       |
-| running all tests         | `make test`                                     | project root       |
-| running one kind of test  | `make test-<label>`, such as `make test-vitest` | project root       |
+| iterating on a change     | `make debug`                                    | cmake root         |
+| running all tests         | `make test`                                     | cmake root         |
+| running one kind of test  | `make test-<label>`, such as `make test-vitest` | cmake root         |
 | listing the kinds of test | `ctest --print-labels`                          | `<platform>/Debug` |
 | running one test          | `ctest -R <name>`                               | `<platform>/Debug` |
 | listing the tests         | `ctest -N`                                      | `<platform>/Debug` |
-| checking style            | `make lint`                                     | project root       |
-| fixing formatting         | `make format`                                   | project root       |
+| checking style            | `make lint`                                     | cmake root         |
+| fixing formatting         | `make format`                                   | cmake root         |
 
 `make test` on a clean tree also writes `test-report.txt`: one line per test, with `FAIL` in the first column for a failing one. The JUnit XML of a run is in `<platform>/Debug/junit/`. Earlier runs may be in `.derammo/test-history/<platform>/<commit>/`.
 

@@ -4,7 +4,7 @@
 # e.g. make -f ../cmake/setup.make executable
 
 # initialize a new project to use this cmake system via a "cmake" folder in that project's root
-root: Makefile CMakeLists.txt .gitignore .claude/rules/derammo-cmake.md
+root: Makefile CMakeLists.txt .gitignore
 
 # location of this makefile's folder, so npm targets can be run from subdirectories at any depth
 DERAMMO_SETUP_DIR := $(dir $(lastword $(MAKEFILE_LIST)))
@@ -164,12 +164,37 @@ CMakeLists.txt: | cmake/setup_templates/CMakeLists.init
 	echo "# packaging support" >> $@
 	echo "include(CPack)" >> $@
 
-# what an agent working in the project is told about this build system: a
-# rule file that imports the instructions of the modules in use, so they
-# change with the modules
-.claude/rules/derammo-cmake.md: | cmake/setup_templates/claude_rule.init
+# set up the folder where agents are started, which may be the cmake root or
+# any folder that the cmake root is reached from, e.g.
+#   make -f cmake/setup.make agentroot
+#   make -f some/project/cmake/setup.make agentroot
+# for each agent that is supported (Claude Code), the agent is told where the
+# cmake root is and given the instructions of the modules found there, by
+# reference, so they change with the modules
+agentroot: .claude/rules/derammo-cmake.md
+
+# the cmake root as it is reached from the folder being set up: the folder
+# this makefile's folder is in, ending in a slash, or nothing when that is
+# the folder being set up itself
+DERAMMO_AGENT_CMAKE_ROOT := $(patsubst ./%,%,$(dir $(patsubst %/,%,$(DERAMMO_SETUP_DIR))))
+
+# what the agent is told about where the cmake root is
+ifeq ($(DERAMMO_AGENT_CMAKE_ROOT),)
+DERAMMO_AGENT_CMAKE_ROOT_SENTENCE := The cmake root for this project is the project root itself, i.e. the folder containing this `.claude` folder.
+else
+DERAMMO_AGENT_CMAKE_ROOT_SENTENCE := The cmake root for this project is `$(DERAMMO_AGENT_CMAKE_ROOT)`, relative to the folder containing this `.claude` folder.
+endif
+
+# a rule file is read from .claude/rules, two folders below the agent root
+.claude/rules/derammo-cmake.md:
+	@case "$(DERAMMO_SETUP_DIR)" in /*) \
+		echo "agentroot: name setup.make by its path relative to this folder, as in make -f some/project/cmake/setup.make agentroot" >&2 ; \
+		exit 1 ;; \
+	esac
 	mkdir -p $(dir $@)
-	cp cmake/setup_templates/claude_rule.init $@
+	printf '%s\n\n%s\n' \
+		'$(DERAMMO_AGENT_CMAKE_ROOT_SENTENCE)' \
+		'@../../$(DERAMMO_AGENT_CMAKE_ROOT)cmake/docs/agent_instructions.md' > $@
 
 # default gitignore file
 .gitignore: | cmake/setup_templates/gitignore.init
